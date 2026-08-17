@@ -1,0 +1,178 @@
+name: Monorepo Production CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─── 1. Backend Build & Push ────────────────────────────────────────────────
+  build-backend:
+    name: Build & Push Backend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/yvontomassin-backend
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Backend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./yvontomassin-backend
+          file: ./yvontomassin-backend/Dockerfile
+          target: production
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─── 2. Frontend Build & Push ───────────────────────────────────────────────
+  build-frontend:
+    name: Build & Push Frontend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/yvontomassin-frontend
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Frontend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./yvontomassin-frontend
+          file: ./yvontomassin-frontend/Dockerfile
+          target: production
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL || 'http://13.49.178.252:5000/api' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─── 3. Zero-Downtime Deployment to EC2 ─────────────────────────────────────
+  deploy:
+    name: Deploy Services to EC2 (Zero-Downtime)
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Deploy Services via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST || '13.49.178.252' }}
+          username: ${{ secrets.EC2_USER || 'ubuntu' }}
+          port: ${{ secrets.EC2_PORT || 22 }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            BACKEND_IMAGE="ghcr.io/${{ github.repository_owner }}/yvontomassin-backend:latest"
+            FRONTEND_IMAGE="ghcr.io/${{ github.repository_owner }}/yvontomassin-frontend:latest"
+            ENV_PATH="/home/${{ secrets.EC2_USER || 'ubuntu' }}/yvontomassin-backend/.env"
+            API_URL="${{ secrets.NEXT_PUBLIC_API_URL || 'http://13.49.178.252:5000/api' }}"
+
+            # Write .env file for backend
+            mkdir -p "$(dirname "$ENV_PATH")"
+            cat > "$ENV_PATH" <<'APP_ENV_EOF'
+            ${{ secrets.APP_ENV_FILE }}
+            APP_ENV_EOF
+            chmod 600 "$ENV_PATH"
+
+            # Log in to GHCR
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+
+            # Pull latest images
+            docker pull "$BACKEND_IMAGE"
+            docker pull "$FRONTEND_IMAGE"
+
+            # ── 1. Deploy Backend (Zero Downtime) ──
+            echo "🚀 Deploying Backend..."
+            docker stop yvontomassin-backend-new 2>/dev/null || true
+            docker rm yvontomassin-backend-new 2>/dev/null || true
+
+            docker run -d --name yvontomassin-backend-new --restart unless-stopped -p 5001:5000 --env-file "$ENV_PATH" "$BACKEND_IMAGE"
+
+            RETRIES=15
+            until [ $RETRIES -le 0 ]; do
+              if curl -sf http://localhost:5001/healthcheck > /dev/null; then
+                echo "✅ Backend container healthy!"
+                break
+              fi
+              sleep 2
+              RETRIES=$((RETRIES-1))
+            done
+
+            docker stop yvontomassin-backend 2>/dev/null || true
+            docker rm yvontomassin-backend 2>/dev/null || true
+            docker stop yvontomassin-backend-new && docker rm yvontomassin-backend-new
+            docker run -d --name yvontomassin-backend --restart unless-stopped -p 5000:5000 --env-file "$ENV_PATH" "$BACKEND_IMAGE"
+
+            # ── 2. Deploy Frontend (Zero Downtime) ──
+            echo "🚀 Deploying Frontend..."
+            docker stop yvontomassin-frontend-new 2>/dev/null || true
+            docker rm yvontomassin-frontend-new 2>/dev/null || true
+
+            docker run -d --name yvontomassin-frontend-new --restart unless-stopped -p 3001:3000 -e NEXT_PUBLIC_API_URL="$API_URL" "$FRONTEND_IMAGE"
+
+            RETRIES=15
+            until [ $RETRIES -le 0 ]; do
+              if curl -sf http://localhost:3001/ > /dev/null; then
+                echo "✅ Frontend container healthy!"
+                break
+              fi
+              sleep 2
+              RETRIES=$((RETRIES-1))
+            done
+
+            docker stop yvontomassin-frontend 2>/dev/null || true
+            docker rm yvontomassin-frontend 2>/dev/null || true
+            docker stop yvontomassin-frontend-new && docker rm yvontomassin-frontend-new
+            docker run -d --name yvontomassin-frontend --restart unless-stopped -p 3000:3000 -e NEXT_PUBLIC_API_URL="$API_URL" "$FRONTEND_IMAGE"
+
+            # Cleanup unused images
+            docker image prune -af --filter "until=24h"

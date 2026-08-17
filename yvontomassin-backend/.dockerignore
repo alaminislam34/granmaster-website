@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+.git
+.gitignore
+.prettierrc.mts
+eslint.config.mts
+*.md
+.qodo

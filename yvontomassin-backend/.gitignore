@@ -1,0 +1,9 @@
+
+.env
+node_modules
+.vercel
+dist
+.qodo
+
+# Docker local override
+docker-compose.override.yml
