@@ -110,6 +110,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
+            export PATH=$PATH:/usr/bin:/usr/local/bin:/snap/bin
 
             BACKEND_IMAGE="ghcr.io/${{ github.repository_owner }}/yvontomassin-backend:latest"
             FRONTEND_IMAGE="ghcr.io/${{ github.repository_owner }}/yvontomassin-frontend:latest"
