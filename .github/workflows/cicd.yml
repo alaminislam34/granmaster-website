@@ -135,8 +135,7 @@ jobs:
 
             # ── 1. Deploy Backend (Zero Downtime) ──
             echo "🚀 Deploying Backend..."
-            docker stop yvontomassin-backend-new 2>/dev/null || true
-            docker rm yvontomassin-backend-new 2>/dev/null || true
+            docker rm -f yvontomassin-backend-new 2>/dev/null || true
 
             docker run -d --name yvontomassin-backend-new --restart unless-stopped -p 5001:5000 --env-file "$ENV_PATH" "$BACKEND_IMAGE"
 
@@ -150,15 +149,13 @@ jobs:
               RETRIES=$((RETRIES-1))
             done
 
-            docker stop yvontomassin-backend 2>/dev/null || true
-            docker rm yvontomassin-backend 2>/dev/null || true
-            docker stop yvontomassin-backend-new && docker rm yvontomassin-backend-new
+            docker rm -f yvontomassin-backend 2>/dev/null || true
+            docker rm -f yvontomassin-backend-new 2>/dev/null || true
             docker run -d --name yvontomassin-backend --restart unless-stopped -p 5000:5000 --env-file "$ENV_PATH" "$BACKEND_IMAGE"
 
             # ── 2. Deploy Frontend (Zero Downtime) ──
             echo "🚀 Deploying Frontend..."
-            docker stop yvontomassin-frontend-new 2>/dev/null || true
-            docker rm yvontomassin-frontend-new 2>/dev/null || true
+            docker rm -f yvontomassin-frontend-new 2>/dev/null || true
 
             docker run -d --name yvontomassin-frontend-new --restart unless-stopped -p 3001:3000 -e NEXT_PUBLIC_API_URL="$API_URL" "$FRONTEND_IMAGE"
 
@@ -172,9 +169,8 @@ jobs:
               RETRIES=$((RETRIES-1))
             done
 
-            docker stop yvontomassin-frontend 2>/dev/null || true
-            docker rm yvontomassin-frontend 2>/dev/null || true
-            docker stop yvontomassin-frontend-new && docker rm yvontomassin-frontend-new
+            docker rm -f yvontomassin-frontend 2>/dev/null || true
+            docker rm -f yvontomassin-frontend-new 2>/dev/null || true
             docker run -d --name yvontomassin-frontend --restart unless-stopped -p 3000:3000 -e NEXT_PUBLIC_API_URL="$API_URL" "$FRONTEND_IMAGE"
 
             # Cleanup unused images
