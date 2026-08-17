@@ -47,18 +47,18 @@ const recalcPlan = async (planId: Types.ObjectId | string) => {
 
   if (!withMeals) throw new AppError(StatusCodes.NOT_FOUND, 'Plan not found');
 
-  let totalCal  = 0;
-  let totalPro  = 0;
+  let totalCal = 0;
+  let totalPro = 0;
   let totalCarb = 0;
-  let totalFat  = 0;
+  let totalFat = 0;
 
   // Sum regular meal slots
   for (const s of withMeals.slots) {
     if (s.meal) {
-      totalCal  += s.meal.calories;
-      totalPro  += s.meal.protein;
+      totalCal += s.meal.calories;
+      totalPro += s.meal.protein;
       totalCarb += s.meal.carbohydrates;
-      totalFat  += s.meal.fat;
+      totalFat += s.meal.fat;
     }
   }
 
@@ -67,17 +67,17 @@ const recalcPlan = async (planId: Types.ObjectId | string) => {
     totalCal += c.calories;
   }
 
-  const maxAllowed   = plan.calorieGoal * CALORIE_TOLERANCE_MULTIPLIER;
+  const maxAllowed = plan.calorieGoal * CALORIE_TOLERANCE_MULTIPLIER;
   const isOverBudget = totalCal > maxAllowed;
 
   return await MealPlanModel.findByIdAndUpdate(
     planId,
     {
-      dailyTotalCalories:      totalCal,
-      dailyTotalProtein:       totalPro,
+      dailyTotalCalories: totalCal,
+      dailyTotalProtein: totalPro,
       dailyTotalCarbohydrates: totalCarb,
-      dailyTotalFat:           totalFat,
-      maxAllowedCalories:      maxAllowed,
+      dailyTotalFat: totalFat,
+      maxAllowedCalories: maxAllowed,
       isOverBudget,
       status: isOverBudget ? 'red' : 'green',
     },
@@ -440,7 +440,7 @@ const addCheatMeal = async (payload: {
 
   // Bug fix: prevent adding the same cheat meal twice
   const alreadyAdded = plan.cheatMeals.some(
-    (c) => c.cheatMealRef.toString() === cheatMealId
+    (c: any) => c.cheatMealRef.toString() === cheatMealId
   );
   if (alreadyAdded) {
     throw new AppError(

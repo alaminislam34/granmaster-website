@@ -69,7 +69,7 @@ const UserSchema = new Schema<IUser>(
   { timestamps: true }
 );
 
-UserSchema.pre('save', async function () {
+UserSchema.pre('save', async function (this: any) {
   // eslint-disable-next-line @typescript-eslint/no-this-alias
   const user = this; // doc
   // hashing password and save into DB - only if password exists
@@ -82,7 +82,7 @@ UserSchema.pre('save', async function () {
 });
 
 // set '' after saving password
-UserSchema.post('save', function (doc, next) {
+UserSchema.post('save', function (doc: any, next: any) {
   doc.password = '';
   next();
 });
@@ -92,8 +92,8 @@ UserSchema.statics.isUserExistsByCustomId = async function (email: string) {
 };
 
 UserSchema.statics.isPasswordMatched = async function (
-  plainTextPassword,
-  hashedPassword
+  plainTextPassword: string,
+  hashedPassword: string
 ) {
   return await bcrypt.compare(plainTextPassword, hashedPassword);
 };
