@@ -8,10 +8,17 @@ export const sendEmail = async (to: string, html: string) => {
     );
   }
 
+  const port = config.email_port || 587;
+  // 465 = implicit TLS from connect. 587 = plain SMTP then STARTTLS.
+  // NODE_ENV must not control this: Gmail 587 rejects immediate SSL
+  // with "wrong version number".
+  const isImplicitTls = port === 465;
+
   const transporter = nodemailer.createTransport({
     host: config.email_host || 'smtp.gmail.com',
-    port: config.email_port || 587,
-    secure: config.NODE_ENV === 'production',
+    port,
+    secure: isImplicitTls,
+    requireTLS: !isImplicitTls,
     auth: {
       user: config.email_user,
       pass: config.email_pass,
