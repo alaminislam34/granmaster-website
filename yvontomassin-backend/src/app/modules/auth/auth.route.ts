@@ -24,6 +24,11 @@ authRouter.post(
   AuthControllers.register
 );
 authRouter.post(
+  '/resend-verification',
+  validateRequest(AuthValidation.resendVerificationValidationSchema),
+  AuthControllers.resendVerificationCode
+);
+authRouter.post(
   '/login',
   validateRequest(AuthValidation.loginValidationSchema),
   AuthControllers.login

@@ -27,11 +27,12 @@ export const sendEmail = async (to: string, html: string) => {
 
   try {
     await transporter.sendMail({
-      from: '"Practice Backend" <noreply@practice.com>', // sender address
-      to, // list of receivers
-      subject: 'Verification Code', // Subject line
-      text: 'Please verify your email using the code provided.', // plain text body
-      html, // html body
+      // Gmail rejects From addresses that don't match the authenticated account
+      from: `"Yvon Tomassin" <${config.email_user}>`,
+      to,
+      subject: 'Verification Code',
+      text: 'Please verify your email using the code provided.',
+      html,
     });
   } catch (error) {
     console.error('Error sending email:', error);

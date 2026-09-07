@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import img1 from '../../assets/image.svg';
-import { register, verifyEmail } from '@/src/lib/authService';
+import { register, resendVerificationCode, verifyEmail } from '@/src/lib/authService';
 import { toast } from 'sonner';
 
 type Step = 'register' | 'verify';
@@ -33,6 +33,7 @@ export default function Register() {
   const [otpCode, setOtpCode] = useState('');
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyError, setVerifyError] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -66,10 +67,8 @@ export default function Register() {
       console.error('Register error:', err);
       const axiosErr = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
       if (axiosErr?.response?.status === 409) {
-        // Already registered but possibly not verified — go straight to OTP step
-        setRegisteredEmail(formData.email);
-        toast.info("Email già registrata. Inserisci il codice inviato alla tua email.");
-        setStep('verify');
+        setError('Email già registrata. Accedi al tuo account.');
+        toast.error('Email già registrata. Accedi al tuo account.');
         return;
       }
       const msg =
@@ -101,6 +100,24 @@ export default function Register() {
       toast.error(msg);
     } finally {
       setVerifyLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setVerifyError('');
+    setResendLoading(true);
+    try {
+      await resendVerificationCode(registeredEmail);
+      toast.success('Nuovo codice inviato. Controlla la tua email (anche spam).');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const msg =
+        axiosErr?.response?.data?.message ||
+        'Invio del codice non riuscito. Riprova.';
+      setVerifyError(msg);
+      toast.error(msg);
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -154,6 +171,15 @@ export default function Register() {
               className="mt-6 w-full rounded-full bg-[#8F00FF] px-4 py-3 text-sm font-semibold text-white hover:bg-[#7A00E5] disabled:opacity-50 transition"
             >
               {verifyLoading ? 'Verifica in corso...' : 'Verifica e continua'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleResendCode}
+              disabled={resendLoading}
+              className="mt-3 w-full rounded-full border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50 transition"
+            >
+              {resendLoading ? 'Invio in corso...' : 'Invia di nuovo il codice'}
             </button>
           </div>
         </div>

@@ -33,6 +33,14 @@ export async function register(payload: RegisterPayload) {
   return res.data; // { success: true, message, data: { email, name, id, role } }
 }
 
+export async function resendVerificationCode(email: string) {
+  const res = await axios.post(
+    `${process.env.NEXT_PUBLIC_API_URL}${ENDPOINTS.resendVerification}`,
+    { email },
+  );
+  return res.data;
+}
+
 // ─── Verify email after registration ─────────────────────────────────────────
 export async function verifyEmail(email: string, code: string) {
   const res = await baseApi.post(ENDPOINTS.verifyEmail, {

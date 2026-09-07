@@ -30,6 +30,18 @@ const register = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const resendVerificationCode = catchAsync(async (req: Request, res: Response) => {
+  const { email } = req.body;
+  await AuthService.resendVerificationCode(email);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Verification code sent. Please check your email.',
+    data: null,
+  });
+});
+
 const verifyEmail = catchAsync(async (req: Request, res: Response) => {
   const { email, code, verificationCode } = req.body;
   // accept both "code" and "verificationCode" field names
@@ -139,6 +151,7 @@ const resetPassword = catchAsync(async (req, res) => {
 
 export const AuthControllers = {
   register,
+  resendVerificationCode,
   verifyEmail,
   login,
   changePassword,

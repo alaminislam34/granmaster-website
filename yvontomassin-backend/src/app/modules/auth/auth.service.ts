@@ -13,42 +13,70 @@ import { IUser } from '../user/user.interface';
 import { User } from '../user/user.model';
 import { sendEmail } from '../../../utils/sendEmail';
 
-const register = async (file: any, payload: IUser) => {
-  if (!payload.password) {
-    throw new AppError(StatusCodes.BAD_REQUEST, 'Password is required');
-  }
-
-  const verificationCode = generateVerificationCode();
-  const password = payload.password;
-  const userData = {
-    ...payload,
-    password,
-    verificationCode,
-    isVerified: false,
-    status: 'in-progress',
-  };
-
-  const user = await User.create(userData);
-
-  const emailHtml = `
+const verificationEmailHtml = (code: string) => `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
       <h2>Verify Your Email</h2>
       <p>Thank you for registering. Please use the following code to verify your account:</p>
       <div style="background: #f4f4f4; padding: 10px; border-radius: 5px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px;">
-        ${verificationCode}
+        ${code}
       </div>
       <p>This code will expire soon.</p>
     </div>
   `;
 
-  await sendEmail(user.email, emailHtml);
+const toRegisterResult = (user: { email: string; name: string; _id: { toString(): string }; role: string }) => ({
+  email: user.email,
+  name: user.name,
+  id: user._id.toString(),
+  role: user.role,
+});
 
-  return {
-    email: user.email, // Return email
-    name: user.name, // Return name
-    id: user._id.toString(), // Return the user ID (converted to string if it's a MongoDB ObjectId)
-    role: user.role,
-  };
+const register = async (file: any, payload: IUser) => {
+  if (!payload.password) {
+    throw new AppError(StatusCodes.BAD_REQUEST, 'Password is required');
+  }
+
+  const existingUser = await User.findOne({ email: payload.email });
+  if (existingUser) {
+    if (existingUser.isVerified) {
+      throw new AppError(StatusCodes.CONFLICT, 'Email already exists');
+    }
+
+    const verificationCode = generateVerificationCode();
+    await User.findOneAndUpdate(
+      { email: payload.email },
+      { verificationCode }
+    );
+    await sendEmail(existingUser.email, verificationEmailHtml(verificationCode));
+    return toRegisterResult(existingUser);
+  }
+
+  const verificationCode = generateVerificationCode();
+  const user = await User.create({
+    ...payload,
+    verificationCode,
+    isVerified: false,
+    status: 'in-progress',
+  });
+
+  await sendEmail(user.email, verificationEmailHtml(verificationCode));
+  return toRegisterResult(user);
+};
+
+const resendVerificationCode = async (email: string) => {
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'User not found');
+  }
+
+  if (user.isVerified) {
+    throw new AppError(StatusCodes.BAD_REQUEST, 'Already verified');
+  }
+
+  const verificationCode = generateVerificationCode();
+  await User.findOneAndUpdate({ email }, { verificationCode });
+  await sendEmail(user.email, verificationEmailHtml(verificationCode));
 };
 
 const verifyEmail = async (email: string, code?: string) => {
@@ -384,6 +412,7 @@ const resetPassword = async (payload: {
 
 export const AuthService = {
   register,
+  resendVerificationCode,
   verifyEmail,
   login,
   changePassword,
