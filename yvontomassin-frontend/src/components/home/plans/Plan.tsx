@@ -9,6 +9,7 @@ import { ENDPOINTS } from "@/src/api/endPoints";
 import { getCurrentUser } from "@/src/lib/authService";
 import { toast } from "sonner";
 import Cheat from "./Cheat";
+import PlanSkeleton from "./PlanSkeleton";
 import { getImageUrl } from "@/src/lib/imageUrl";
 import SquareMealImage from "@/src/components/Shared/SquareMealImage";
 import { downloadSavedPdf, saveContent } from "@/src/lib/savedContent";
@@ -256,14 +257,7 @@ function PlanContent() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[40vh]">
-        <div className="text-center text-slate-500">
-          <div className="mb-2 text-3xl">⏳</div>
-          <p className="text-sm font-medium">Caricamento piano pasto...</p>
-        </div>
-      </div>
-    );
+    return <PlanSkeleton />;
   }
 
   if (error || !plan) {
@@ -538,7 +532,7 @@ function PlanContent() {
 
 export default function Plan() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-[40vh] text-slate-400">Caricamento...</div>}>
+    <Suspense fallback={<PlanSkeleton />}>
       <PlanContent />
     </Suspense>
   );
