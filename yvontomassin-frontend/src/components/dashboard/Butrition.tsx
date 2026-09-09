@@ -683,7 +683,7 @@ export default function Butrition() {
                 <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
                   {(["calories","protein","carbohydrates","fat"] as const).map((field) => {
                     const MULTIPLIER = { protein: 4, carbohydrates: 4, fat: 9 } as const;
-                    const val = Number((form as Record<string, string>)[field]) || 0;
+                    const val = Number(form[field]) || 0;
                     const mul = field !== "calories" ? MULTIPLIER[field] : null;
                     const kcalFromMacro = mul !== null ? val * mul : null;
                     return (
@@ -693,7 +693,7 @@ export default function Butrition() {
                         </label>
                         <input
                           type="number" min="0"
-                          value={(form as Record<string, string>)[field]}
+                          value={form[field]}
                           onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
                           className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-[13px] outline-none focus:border-[#8F00FF] transition"
                           placeholder="0"

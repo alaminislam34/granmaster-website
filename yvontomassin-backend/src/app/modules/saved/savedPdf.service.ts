@@ -120,7 +120,7 @@ export const buildSavedPdf = async (saved: ISavedContent & { createdAt?: Date })
     if (imageBuffer) {
       try {
         const startY = doc.y + 8;
-        doc.image(imageBuffer, { fit: [160, 160], align: 'left' });
+        doc.image(imageBuffer, { fit: [160, 160] });
         doc.y = Math.max(doc.y, startY + 168);
       } catch {
         // skip unreadable images so the PDF still generates
