@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 const navItems = [
   { label: 'Pannello di controllo', href: '/admin/dashboard', icon: PiSquaresFourBold },
   { label: 'Piani nutrizionali', href: '/admin/nutrition', icon: PiForkKnifeBold },
-  { label: 'Pasti imbrogliati', href: '/admin/cheatMeals', icon: PiWarningDiamondBold },
+  { label: 'Catalogo sgarro', href: '/admin/cheatMeals', icon: PiWarningDiamondBold },
   { label: 'Impostazioni', href: '/admin/settings', icon: PiGearBold },
 ];
 

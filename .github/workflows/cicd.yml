@@ -103,11 +103,14 @@ jobs:
     steps:
       - name: Deploy Services via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          APP_ENV_FILE: ${{ secrets.APP_ENV_FILE }}
         with:
           host: ${{ secrets.EC2_HOST || '52.54.77.164' }}
           username: ${{ secrets.EC2_USER || 'ubuntu' }}
           port: ${{ secrets.EC2_PORT || 22 }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: APP_ENV_FILE
           script: |
             set -e
             export PATH=$PATH:/usr/bin:/usr/local/bin:/snap/bin
@@ -117,11 +120,22 @@ jobs:
             ENV_PATH="/home/${{ secrets.EC2_USER || 'ubuntu' }}/yvontomassin-backend/.env"
             API_URL="${{ secrets.NEXT_PUBLIC_API_URL || 'http://52.54.77.164:5000/api' }}"
 
-            # Write .env file for backend
             mkdir -p "$(dirname "$ENV_PATH")"
-            cat > "$ENV_PATH" <<'APP_ENV_EOF'
-            ${{ secrets.APP_ENV_FILE }}
-            APP_ENV_EOF
+            # YAML indent + comments/blank lines break docker --env-file
+            printf '%s\n' "$APP_ENV_FILE" | awk '
+            {
+              gsub(/\r/, "")
+              sub(/^[[:space:]]+/, "")
+              sub(/[[:space:]]+$/, "")
+              if ($0 == "" || $0 ~ /^#/) next
+              eq = index($0, "=")
+              if (eq < 2) next
+              key = substr($0, 1, eq - 1)
+              val = substr($0, eq + 1)
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
+              if (key == "" || key ~ /[[:space:]]/) next
+              print key "=" val
+            }' > "$ENV_PATH"
             chmod 600 "$ENV_PATH"
 
             # Log in to GHCR on EC2

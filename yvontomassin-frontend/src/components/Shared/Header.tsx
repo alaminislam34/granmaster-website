@@ -123,6 +123,17 @@ export default function Header() {
                     Profilo
                   </Link>
 
+                  <Link
+                    href="/savedMeals"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-[#8F00FF]/10 hover:text-[#8F00FF] transition"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                    </svg>
+                    Pasti salvati
+                  </Link>
+
                   {isAdmin && (
                     <Link
                       href="/admin/dashboard"
@@ -234,6 +245,17 @@ export default function Header() {
 
             {user ? (
               <>
+                <Link
+                  href="/savedMeals"
+                  className={`rounded-full px-3 py-1 transition-colors ${
+                    pathname.startsWith('/savedMeals')
+                      ? 'bg-[#8F00FF]/10 text-[#8F00FF]'
+                      : 'text-gray-900 hover:bg-[#8F00FF]/10 hover:text-[#8F00FF]'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Pasti salvati
+                </Link>
                 <Link
                   href="/profile"
                   className="rounded-full px-3 py-1 text-gray-900 hover:bg-[#8F00FF]/10 hover:text-[#8F00FF] transition-colors"

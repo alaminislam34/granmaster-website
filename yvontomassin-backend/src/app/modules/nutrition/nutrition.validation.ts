@@ -21,6 +21,7 @@ const createNutritionValidation = z.object({
       .number({ message: 'Portion size is required' })
       .min(1, 'Portion size must be at least 1 gram'),
     description: z.string().trim().optional(),
+    isQuickMeal: z.boolean().optional(),
     nutrition: nutritionInfoSchema,
   }),
 });
@@ -40,6 +41,7 @@ const updateNutritionValidation = z.object({
       .optional(),
     portionSize: z.number().min(1).optional(),
     description: z.string().trim().optional(),
+    isQuickMeal: z.boolean().optional(),
     nutrition: partialNutritionInfoSchema.optional(),
   }),
 });

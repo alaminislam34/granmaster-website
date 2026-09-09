@@ -44,6 +44,12 @@ mealPlannerRouter.post(
 );
 
 mealPlannerRouter.post(
+  '/plans/clear-slot',
+  validateRequest(MealPlannerValidation.clearSlotMealValidation),
+  mealPlannerController.clearSlotMeal
+);
+
+mealPlannerRouter.post(
   '/plans/cheat-day',
   validateRequest(MealPlannerValidation.addCheatMealValidation),
   mealPlannerController.addCheatMeal

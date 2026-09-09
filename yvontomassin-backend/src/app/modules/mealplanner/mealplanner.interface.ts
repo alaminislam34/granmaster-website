@@ -12,6 +12,7 @@ export interface IMeal {
   calorieRange: CalorieRange;
   image?: string;
   description?: string;
+  isQuickMeal?: boolean;
 }
 
 // ─── One slot inside a daily plan ─────────────────────────────────────────────

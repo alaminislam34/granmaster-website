@@ -27,8 +27,11 @@ async function syncToMealPlanner(
       carbohydrates: data.nutrition?.carbohydrates ?? 0,
       fat: data.nutrition?.fat ?? 0,
       calorieRange: getCalorieRange(calories),
-      image: data.image ?? null,
+      ...(typeof data.image === 'string' && data.image.trim()
+        ? { image: data.image }
+        : {}),
       description: data.description ?? null,
+      isQuickMeal: data.isQuickMeal === true,
     },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
@@ -39,17 +42,20 @@ const createNutrition = async (
   data: INutrition,
   imageFile?: Express.Multer.File
 ) => {
+  const payload: Partial<INutrition> = { ...data };
+  delete payload.image;
+
   let uploadedImageUrl: string | null = null;
 
   if (imageFile) {
     const uploaded = await s3Service.uploadImage(imageFile, 'nutrition');
     uploadedImageUrl = uploaded.url;
-    data.image = uploaded.url;
+    payload.image = uploaded.url;
   }
 
   let result;
   try {
-    result = await NutritionModel.create(data);
+    result = await NutritionModel.create(payload as INutrition);
   } catch (error) {
     await s3Service.deleteImageBestEffort(uploadedImageUrl);
     throw error;
@@ -61,6 +67,7 @@ const createNutrition = async (
     nutrition: result.nutrition,
     image: result.image,
     description: result.description,
+    isQuickMeal: result.isQuickMeal,
   }).catch(() => {});
   return result;
 };
@@ -84,17 +91,20 @@ const updateNutrition = async (
   const existing = await NutritionModel.findById(id);
   if (!existing) return null;
 
+  const safePayload: Partial<INutrition> = { ...payload };
+  delete safePayload.image;
+
   let uploadedImageUrl: string | null = null;
 
   if (imageFile) {
     const uploaded = await s3Service.uploadImage(imageFile, 'nutrition');
     uploadedImageUrl = uploaded.url;
-    payload.image = uploaded.url;
+    safePayload.image = uploaded.url;
   }
 
   let result;
   try {
-    result = await NutritionModel.findByIdAndUpdate(id, payload, {
+    result = await NutritionModel.findByIdAndUpdate(id, safePayload, {
       new: true,
       runValidators: true,
     });
@@ -110,6 +120,7 @@ const updateNutrition = async (
       nutrition: result.nutrition,
       image: result.image,
       description: result.description,
+      isQuickMeal: result.isQuickMeal,
     }).catch(() => {});
 
     if (uploadedImageUrl && existing.image && existing.image !== uploadedImageUrl) {
@@ -143,6 +154,7 @@ const syncAllNutritionToMealPlanner = async () => {
       nutrition: n.nutrition,
       image: n.image,
       description: n.description,
+      isQuickMeal: n.isQuickMeal,
     });
     synced++;
   }

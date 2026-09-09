@@ -10,6 +10,8 @@ import { getCurrentUser } from "@/src/lib/authService";
 import { toast } from "sonner";
 import Cheat from "./Cheat";
 import { getImageUrl } from "@/src/lib/imageUrl";
+import SquareMealImage from "@/src/components/Shared/SquareMealImage";
+import { downloadSavedPdf, saveContent } from "@/src/lib/savedContent";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface MealInSlot {
@@ -44,53 +46,6 @@ const SLOT_LABEL: Record<string, string> = {
   "Snack 3": "MERENDA 3", Lunch: "PRANZO", Dinner: "CENA",
 };
 
-type SlotMacro = {
-  proteinMin: string;
-  proteinMax: string;
-  carbMin: string;
-  carbMax: string;
-  fatMin: string;
-  fatMax: string;
-};
-
-type SlotMacroMap = Record<string, SlotMacro>;
-
-const STORAGE_KEY = "homeSettings_v3";
-
-function loadSlotMacros(): SlotMacroMap {
-  if (typeof window === "undefined") return {};
-
-  try {
-    const settings = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    return settings?.slotMacros ?? {};
-  } catch {
-    return {};
-  }
-}
-
-function isOutsideRange(value: number, min?: string, max?: string) {
-  const parsedMin = min !== undefined && min !== "" ? Number(min) : null;
-  const parsedMax = max !== undefined && max !== "" ? Number(max) : null;
-
-  if (parsedMin !== null && Number.isFinite(parsedMin) && value < parsedMin) return true;
-  if (parsedMax !== null && Number.isFinite(parsedMax) && value > parsedMax) return true;
-
-  return false;
-}
-
-function checkRangeMismatch(meal: MealInSlot, macro: SlotMacro) {
-  const protein = isOutsideRange(meal.protein, macro.proteinMin, macro.proteinMax);
-  const carbs = isOutsideRange(meal.carbohydrates, macro.carbMin, macro.carbMax);
-  const fat = isOutsideRange(meal.fat, macro.fatMin, macro.fatMax);
-
-  return {
-    any: protein || carbs || fat,
-    protein,
-    carbs,
-    fat,
-  };
-}
-
 function PlanContent() {
   const searchParams = useSearchParams();
   const planId = searchParams.get("planId");
@@ -100,7 +55,6 @@ function PlanContent() {
   const [error, setError]           = useState("");
   const [swapping, setSwapping]     = useState<number | null>(null);
   const [isCheatOpen, setIsCheatOpen] = useState(false);
-  const [slotMacros]                = useState<SlotMacroMap>(() => loadSlotMacros());
 
   // ─── Fetch plan ─────────────────────────────────────────────────────────────
   const fetchPlan = useCallback(async () => {
@@ -149,23 +103,12 @@ function PlanContent() {
         planId: plan._id,
         slotIndex,
         currentMealId: slot.meal._id,
+        fewerCaloriesOnly: true,
       });
       const updatedPlan = res.data?.data?.plan ?? res.data?.data ?? null;
 
       if (updatedPlan) {
         const newMeal   = updatedPlan.slots[slotIndex]?.meal as MealInSlot | null;
-        const slotName  = updatedPlan.slots[slotIndex]?.slot as string;
-        const macro     = slotMacros[slotName];
-
-        // If ranges are set and new meal doesn't match, reject the swap
-        if (newMeal && macro) {
-          const newMismatch = checkRangeMismatch(newMeal, macro);
-          if (newMismatch.any) {
-            toast.error("Nessun pasto trovato nel range. Riprova.");
-            return; // keep old plan — don't call setPlan
-          }
-        }
-
         setPlan(updatedPlan);
 
         if (newMeal) {
@@ -198,10 +141,10 @@ function PlanContent() {
       });
       setPlan(res.data?.data ?? null);
       setIsCheatOpen(false);
-      toast.success("Cheat meal aggiunto!");
+      toast.success("Sgarro aggiunto!");
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
-      const msg = e?.response?.data?.message || "Aggiunta cheat meal fallita.";
+      const msg = e?.response?.data?.message || "Aggiunta sgarro fallita.";
       toast.error(msg);
     }
   }
@@ -215,10 +158,101 @@ function PlanContent() {
         cheatMealIndex,
       });
       setPlan(res.data?.data ?? null);
-      toast.success("Cheat meal rimosso.");
+      toast.success("Sgarro rimosso.");
     } catch {
       toast.error("Rimozione fallita.");
     }
+  }
+
+  async function handleDeleteMeal(slotIndex: number) {
+    if (!plan) return;
+    try {
+      const res = await baseApi.post(ENDPOINTS.mealPlannerClearSlot, {
+        planId: plan._id,
+        slotIndex,
+      });
+      setPlan(res.data?.data ?? null);
+      toast.success("Pasto eliminato dalla giornata.");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Eliminazione fallita.");
+    }
+  }
+
+  function buildSnapshot(includeStrategy = false) {
+    return {
+      calorieGoal: plan!.calorieGoal,
+      dailyTotalCalories: plan!.dailyTotalCalories,
+      dailyTotalProtein: plan!.dailyTotalProtein,
+      dailyTotalCarbohydrates: plan!.dailyTotalCarbohydrates,
+      dailyTotalFat: plan!.dailyTotalFat,
+      proteinGoal: plan!.proteinGoal,
+      carbohydratesGoal: plan!.carbohydratesGoal,
+      fatGoal: plan!.fatGoal,
+      maxAllowedCalories: plan!.maxAllowedCalories,
+      slots: plan!.slots.map((slot) => ({
+        slot: slot.slot,
+        category: slot.category,
+        meal: slot.meal
+          ? {
+              name: slot.meal.name,
+              calories: slot.meal.calories,
+              protein: slot.meal.protein,
+              carbohydrates: slot.meal.carbohydrates,
+              fat: slot.meal.fat,
+              description: slot.meal.description ?? null,
+              image: slot.meal.image ?? null,
+            }
+          : null,
+      })),
+      cheatMeals: plan!.cheatMeals.map((cm) => ({
+        name: cm.name,
+        calories: cm.calories,
+        description: cm.cheatMealRef?.description ?? null,
+        image: cm.cheatMealRef?.image ?? null,
+      })),
+      instructions: includeStrategy
+        ? [
+            "Usa VARIANTE per scegliere pasti con meno calorie, senza altri filtri.",
+            "Usa ELIMINA QUESTO PASTO se vuoi ridurre ulteriormente il totale giornaliero.",
+            "Aggiungi lo sgarro con AGGIUNGI LO SGARRO solo dopo aver bilanciato la giornata.",
+          ]
+        : [],
+    };
+  }
+
+  async function persistAndDownload(type: "day" | "strategy") {
+    if (!plan) return;
+    const user = getCurrentUser();
+    if (!user?.id) {
+      toast.error("Accedi per salvare e scaricare il PDF.");
+      return;
+    }
+    try {
+      const saved = await saveContent({
+        userId: user.id,
+        type,
+        title: `${type === "strategy" ? "Strategia" : "Giornata"} ${new Date().toLocaleDateString("it-IT")}`,
+        snapshot: buildSnapshot(type === "strategy"),
+      });
+      await downloadSavedPdf(saved._id, `${saved.title}.pdf`);
+      toast.success(
+        type === "strategy"
+          ? "Strategia salvata. PDF scaricato."
+          : "Giornata salvata. PDF scaricato."
+      );
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Salvataggio o PDF fallito.");
+    }
+  }
+
+  function handleSaveDay() {
+    void persistAndDownload("day");
+  }
+
+  function handleSaveStrategy() {
+    void persistAndDownload("strategy");
   }
 
   if (loading) {
@@ -280,7 +314,7 @@ function PlanContent() {
         {/* Cheat meals added */}
         {plan.cheatMeals.length > 0 && (
           <div className="mb-6 space-y-3">
-            <h4 className="text-sm font-semibold text-gray-700">Indulgenze selezionate</h4>
+            <h4 className="text-sm font-semibold text-gray-700">Sgarri selezionati</h4>
             {plan.cheatMeals.map((cm, i) => {
               const ref = cm.cheatMealRef;
               const imgSrc = getImageUrl(ref?.image);
@@ -288,9 +322,7 @@ function PlanContent() {
                 <div key={i} className="rounded-2xl overflow-hidden border border-gray-100 bg-white shadow-sm">
                   <div className="grid grid-cols-1 md:grid-cols-3">
                     <div className="md:col-span-1 bg-gray-50">
-                      {imgSrc
-                        ? <img src={imgSrc} alt={cm.name} className="w-full h-48 object-cover" />
-                        : <div className="w-full h-48 flex items-center justify-center text-5xl bg-gray-100">🍔</div>}
+                      <SquareMealImage src={imgSrc} alt={cm.name} fallback="🍔" />
                     </div>
                     <div className="md:col-span-2 p-6">
                       <div className="text-xs text-gray-400 uppercase">Selezione Gourmet</div>
@@ -336,9 +368,7 @@ function PlanContent() {
                   className="rounded-2xl border border-gray-100 bg-white p-6 shadow-[0_10px_25px_-20px_rgba(15,23,42,0.25)] transition duration-300 hover:-translate-y-1 hover:border-[#8F00FF]"
                 >
                   <div className="relative">
-                    {imgSrc
-                      ? <img src={imgSrc} alt={visibleMeal?.name ?? slot.slot} className="h-48 w-full rounded-xl object-cover" />
-                      : <div className="h-48 w-full rounded-xl bg-gray-100 flex items-center justify-center text-5xl">🍽️</div>}
+                    <SquareMealImage src={imgSrc} alt={visibleMeal?.name ?? slot.slot} className="rounded-xl" />
                     <span className="absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#8F00FF] shadow-sm">
                       {SLOT_LABEL[slot.slot] ?? slot.slot}
                     </span>
@@ -382,8 +412,16 @@ function PlanContent() {
                       className="mt-4 w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 hover:border-[#8F00FF] flex items-center justify-center gap-2 bg-white disabled:opacity-50 transition"
                     >
                       <FiRefreshCw className={`text-sm ${swapping === idx ? "animate-spin" : ""}`} />
-                      {swapping === idx ? "Cambio..." : plan.isOverBudget ? "Variante (meno calorie)" : "Variante"}
+                      {swapping === idx ? "Cambio..." : "VARIANTE"}
                     </button>
+                    {meal && (
+                      <button
+                        onClick={() => handleDeleteMeal(idx)}
+                        className="mt-2 w-full rounded-lg border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition"
+                      >
+                        ELIMINA QUESTO PASTO
+                      </button>
+                    )}
                   </div>
                 </article>
               );
@@ -460,16 +498,29 @@ function PlanContent() {
 
             {/* Cheat day button */}
             <div className="mt-6 rounded-xl border border-gray-100 bg-gray-50 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-700">Programma lo sgarro</p>
               <button
                 onClick={() => setIsCheatOpen(true)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#8F00FF] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#7A00E5]"
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#8F00FF] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#7A00E5]"
               >
                 <FiTool className="text-sm" />
-                Genera pasto cheat
+                AGGIUNGI LO SGARRO
               </button>
               <p className="mt-3 text-[11px] text-gray-500">
-                Aggiungi un pasto cheat dal tuo catalogo. Ricalcoleremo automaticamente i totali.
+                Aggiungi uno sgarro dal catalogo. I totali si ricalcolano automaticamente.
               </p>
+              <button
+                onClick={handleSaveDay}
+                className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:border-[#8F00FF]"
+              >
+                SALVA QUESTA GIORNATA
+              </button>
+              <button
+                onClick={handleSaveStrategy}
+                className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:border-[#8F00FF]"
+              >
+                SALVA STRATEGIA
+              </button>
             </div>
           </aside>
         </div>

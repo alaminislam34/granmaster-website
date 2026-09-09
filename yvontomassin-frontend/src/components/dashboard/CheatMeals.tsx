@@ -12,6 +12,7 @@ import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
 import { toast } from "sonner";
 import { getImageUrl } from "@/src/lib/imageUrl";
+import SquareMealImage from "@/src/components/Shared/SquareMealImage";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface CheatNutrition { calories: number; protein: number; carbohydrates: number; fat: number; }
@@ -47,7 +48,7 @@ export default function CheatMeals() {
       const res = await baseApi.get(ENDPOINTS.cheat);
       setMeals(res.data?.data ?? []);
     } catch {
-      setError("Impossibile caricare i pasti cheat.");
+      setError("Impossibile caricare gli sgarri.");
     } finally {
       setLoading(false);
     }
@@ -151,12 +152,12 @@ export default function CheatMeals() {
         await baseApi.patch(`${ENDPOINTS.cheat}/${editId}`, fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
-        toast.success("Pasto cheat aggiornato!");
+        toast.success("Sgarro aggiornato!");
       } else {
         await baseApi.post(ENDPOINTS.cheatCreate, fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
-        toast.success("Pasto cheat pubblicato!");
+        toast.success("Sgarro pubblicato!");
       }
       closeModal();
       fetchMeals();
@@ -172,11 +173,11 @@ export default function CheatMeals() {
 
   // ─── Delete ──────────────────────────────────────────────────────────────────
   async function handleDelete(id: string) {
-    if (!confirm("Eliminare questo pasto cheat?")) return;
+    if (!confirm("Eliminare questo sgarro?")) return;
     try {
       await baseApi.delete(`${ENDPOINTS.cheat}/${id}`);
       setMeals((prev) => prev.filter((m) => m._id !== id));
-      toast.success("Pasto cheat eliminato.");
+      toast.success("Sgarro eliminato.");
     } catch {
       toast.error("Eliminazione fallita.");
     }
@@ -195,7 +196,7 @@ export default function CheatMeals() {
     : null;
 
   const cards = [
-    { label: "BIBLIOTECA TOTALE", value: String(meals.length), note: "Selezione", helper: "pasti cheat totali", icon: PiForkKnifeBold, accent: "bg-[#8F00FF]/10 text-[#8F00FF]" },
+    { label: "BIBLIOTECA TOTALE", value: String(meals.length), note: "Selezione", helper: "sgarri totali", icon: PiForkKnifeBold, accent: "bg-[#8F00FF]/10 text-[#8F00FF]" },
     { label: "IMPATTO MEDIO", value: String(avgCal), note: "kcal/pasto", helper: "Densità media", icon: PiGaugeBold, accent: "bg-[#8F00FF]/5 text-[#8F00FF]" },
     { label: "SELEZIONE POPOLARE", value: topMeal?.name?.split(" ")[0] ?? "—", note: "", helper: "Più calorico", icon: PiSparkleBold, accent: "bg-[#8F00FF]/10 text-[#8F00FF]" },
     { label: "CALORIE MAX", value: topMeal ? String(topMeal.nutrition.calories) : "—", note: "kcal", helper: "Premium meal", icon: PiFireBold, accent: "bg-[#8F00FF]/5 text-[#8F00FF]" },
@@ -212,7 +213,7 @@ export default function CheatMeals() {
               Pasti imbrogliati
             </h1>
             <p className="mt-1 text-[12px] text-slate-500 sm:text-[13px]">
-              Gestisci la libreria di pasti cheat premium.
+              Gestisci il catalogo sgarro.
             </p>
           </div>
           <button
@@ -269,17 +270,15 @@ export default function CheatMeals() {
                 {loading ? (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">Caricamento...</td></tr>
                 ) : paginated.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">Nessun pasto cheat trovato.</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">Nessuno sgarro trovato.</td></tr>
                 ) : paginated.map((meal) => {
                   const imgSrc = getImageUrl(meal.image);
                   return (
                     <tr key={meal._id}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-base">
-                            {imgSrc
-                              ? <img src={imgSrc} alt={meal.name} className="h-full w-full object-cover" />
-                              : "🍔"}
+                          <div className="h-10 w-10 overflow-hidden rounded-md bg-slate-100">
+                            <SquareMealImage src={imgSrc} alt={meal.name} fallback="🍔" className="rounded-md" />
                           </div>
                           <div>
                             <p className="font-semibold text-slate-900">{meal.name}</p>
@@ -336,7 +335,7 @@ export default function CheatMeals() {
 
           <div className="relative z-10 my-auto w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl sm:rounded-3xl sm:p-8">
             <h2 className="text-[24px] font-semibold tracking-tight text-slate-900 sm:text-[32px]">
-              {editId ? "Modifica pasto cheat" : "Aggiungi un nuovo pasto cheat"}
+              {editId ? "Modifica sgarro" : "Aggiungi uno sgarro"}
             </h2>
             <p className="mt-1 text-[13px] text-slate-500">
               Documenta la tua indulgenza culinaria con precisione e stile.
@@ -357,11 +356,11 @@ export default function CheatMeals() {
                   className="flex h-32 w-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white transition hover:bg-slate-50 overflow-hidden"
                 >
                   {imagePreview
-                    ? <img src={imagePreview} alt="preview" className="h-full w-full object-cover" />
+                    ? <SquareMealImage src={imagePreview} alt="preview" className="max-h-64" />
                     : <>
                         <FiUploadCloud className="text-2xl text-[#8F00FF]" />
-                        <p className="mt-2 text-[14px] font-medium text-slate-700">Carica la foto del pasto</p>
-                        <p className="mt-1 text-[11px] text-slate-400">Trascina o fai clic per sfogliare</p>
+                        <p className="mt-2 text-[14px] font-medium text-slate-700">Carica la foto 1:1</p>
+                        <p className="mt-1 text-[11px] text-slate-400">Formato quadrato consigliato</p>
                       </>}
                 </button>
               </div>
@@ -419,7 +418,7 @@ export default function CheatMeals() {
                 disabled={saving}
                 className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-[#8F00FF] px-8 text-[12px] font-semibold text-white transition hover:bg-[#7A00E5] sm:w-auto disabled:opacity-60"
               >
-                {saving ? "Salvataggio..." : editId ? "Salva modifiche" : "Pubblica Cheat Meal"}
+                {saving ? "Salvataggio..." : editId ? "Salva modifiche" : "Pubblica sgarro"}
               </button>
             </div>
           </div>

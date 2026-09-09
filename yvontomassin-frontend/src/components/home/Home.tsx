@@ -92,16 +92,25 @@ export default function Home() {
   const [slotCalories, setSlotCalories]          = useState<Record<string, number>>(DEFAULT_SLOT_CALORIES);
   const [slotMacros, setSlotMacros]              = useState<Record<string, SlotMacro>>({});
   const [loading, setLoading]                    = useState(false);
+  const [quickLoading, setQuickLoading]          = useState(false);
   const [error, setError]                        = useState("");
+  const [settingsReady, setSettingsReady]        = useState(false);
 
   useEffect(() => {
     const s = loadSettings();
-    if (!s) return;
-    if (s.selectedMeals)    setSelectedMeals(s.selectedMeals);
-    if (s.goalValues)       setGoalValues(s.goalValues);
-    if (s.slotCalories)     setSlotCalories(s.slotCalories);
-    if (s.slotMacros)       setSlotMacros(s.slotMacros);
+    if (s) {
+      if (s.selectedMeals)    setSelectedMeals(s.selectedMeals);
+      if (s.goalValues)       setGoalValues(s.goalValues);
+      if (s.slotCalories)     setSlotCalories(s.slotCalories);
+      if (s.slotMacros)       setSlotMacros(s.slotMacros);
+    }
+    setSettingsReady(true);
   }, []);
+
+  useEffect(() => {
+    if (!settingsReady) return;
+    saveSettings({ selectedMeals, goalValues, slotCalories, slotMacros });
+  }, [selectedMeals, goalValues, slotCalories, slotMacros, settingsReady]);
 
   function getSlotMacro(slot: string): SlotMacro {
     return slotMacros[slot] ?? DEFAULT_MACRO;
@@ -163,7 +172,7 @@ export default function Home() {
   }
 
   // ── Generate ────────────────────────────────────────────────────────────────
-  async function handleGenerate() {
+  async function handleGenerate(quickMealsOnly = false) {
     setError("");
     const user = getCurrentUser();
     if (!user) { router.push("/auth/login"); return; }
@@ -200,9 +209,8 @@ export default function Home() {
       return { min: m.fatMin !== "" ? Number(m.fatMin) : 0, max: m.fatMax !== "" ? Number(m.fatMax) : 9999 };
     });
 
-    saveSettings({ selectedMeals, goalValues, slotCalories, slotMacros });
-
-    setLoading(true);
+    if (quickMealsOnly) setQuickLoading(true);
+    else setLoading(true);
     try {
       const res = await baseApi.post(ENDPOINTS.mealPlannerGenerate, {
         userId:            user.id,
@@ -216,6 +224,7 @@ export default function Home() {
         slotProteinRanges,
         slotCarbRanges,
         slotFatRanges,
+        ...(quickMealsOnly ? { quickMealsOnly: true } : {}),
       });
       const planId = res.data?.data?._id;
       if (planId) {
@@ -231,6 +240,7 @@ export default function Home() {
       setError(msg); toast.error(msg);
     } finally {
       setLoading(false);
+      setQuickLoading(false);
     }
   }
 
@@ -586,13 +596,20 @@ export default function Home() {
             )}
 
             {/* CTA */}
-            <div className="mt-10 flex justify-center">
+            <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <button
-                onClick={handleGenerate}
-                disabled={loading}
+                onClick={() => handleGenerate(false)}
+                disabled={loading || quickLoading}
                 className="rounded-lg bg-[#8F00FF] px-10 py-3 text-sm font-semibold text-white shadow-md hover:bg-[#7A00E5] disabled:opacity-60 transition"
               >
                 {loading ? "Generazione in corso..." : "VEDI PIANO PASTO →"}
+              </button>
+              <button
+                onClick={() => handleGenerate(true)}
+                disabled={loading || quickLoading}
+                className="rounded-lg border border-[#8F00FF] bg-white px-8 py-3 text-sm font-semibold text-[#8F00FF] hover:bg-[#8F00FF]/5 disabled:opacity-60 transition"
+              >
+                {quickLoading ? "Generazione in corso..." : "PASTI PRATICI E VELOCI"}
               </button>
             </div>
           </div>

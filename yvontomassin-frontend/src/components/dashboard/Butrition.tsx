@@ -12,6 +12,7 @@ import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
 import { toast } from "sonner";
 import { getImageUrl } from "@/src/lib/imageUrl";
+import SquareMealImage from "@/src/components/Shared/SquareMealImage";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type MealCategory = "Breakfast" | "Lunch" | "Dinner" | "Snack" ;
@@ -22,6 +23,7 @@ interface Meal {
   _id: string; name: string; category: MealCategory;
   portionSize: number; portionType?: PortionType; image?: string; nutrition: NutritionInfo;
   description?: string;
+  isQuickMeal?: boolean;
   createdAt: string;
 }
 
@@ -31,7 +33,7 @@ const CATEGORY_MAP: Record<string, MealCategory> = {
   Spuntino: "Snack",
 };
 const CATEGORY_LABELS = Object.keys(CATEGORY_MAP);
-const FILTER_TABS = ["Tutti", ...CATEGORY_LABELS];
+const FILTER_TABS = ["Tutti", ...CATEGORY_LABELS, "Pasto veloce"];
 
 const BADGE: Record<MealCategory, string> = {
   Breakfast: "bg-[#8F00FF]/10 text-[#8F00FF]",
@@ -50,6 +52,7 @@ const EMPTY_FORM = {
   portionType: "Medium" as PortionType,
   calories: "", protein: "", carbohydrates: "", fat: "",
   description: "",
+  isQuickMeal: false,
 };
 
 const PAGE_SIZE = 8;
@@ -117,6 +120,7 @@ export default function Butrition() {
       carbohydrates: String(meal.nutrition.carbohydrates),
       fat: String(meal.nutrition.fat),
       description: meal.description ?? "",
+      isQuickMeal: meal.isQuickMeal === true,
     });
     setImageFile(null);
     setImagePreview(getImageUrl(meal.image) ?? "");
@@ -161,6 +165,7 @@ export default function Butrition() {
       portionSize: Number(form.portionSize),
       portionType: form.portionType,
       description: form.description.trim() || undefined,
+      isQuickMeal: form.isQuickMeal,
       nutrition: {
         calories: Number(form.calories),
         protein: Number(form.protein) || 0,
@@ -232,7 +237,9 @@ export default function Butrition() {
 
   // ─── Filtering & pagination ────────────────────────────────────────────────
   const filtered = meals.filter((m) => {
-    if (activeTab !== "Tutti") {
+    if (activeTab === "Pasto veloce") {
+      if (!m.isQuickMeal) return false;
+    } else if (activeTab !== "Tutti") {
       const target = CATEGORY_MAP[activeTab];
       if (target === undefined || m.category !== target) return false;
     }
@@ -485,13 +492,14 @@ export default function Butrition() {
                     <tr key={meal._id}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-md bg-slate-100 text-base">
-                            {imgSrc
-                              ? <img src={imgSrc} alt={meal.name} className="h-full w-full object-cover" />
-                              : "🍽️"}
+                          <div className="h-10 w-10 overflow-hidden rounded-md bg-slate-100">
+                            <SquareMealImage src={imgSrc} alt={meal.name} className="rounded-md" />
                           </div>
                           <div>
                             <p className="font-semibold text-slate-900">{meal.name}</p>
+                            {meal.isQuickMeal && (
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8F00FF]">Pasto veloce</p>
+                            )}
                             <p className="text-[11px] text-slate-500">{meal.portionSize}g</p>
                             {meal.description && (
                               <p className="text-[11px] text-slate-400 max-w-50 truncate">{meal.description}</p>
@@ -571,15 +579,15 @@ export default function Butrition() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex h-32 w-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white transition hover:bg-slate-50 overflow-hidden"
+                  className="flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white transition hover:bg-slate-50 overflow-hidden"
                 >
                   {imagePreview
-                    ? <img src={imagePreview} alt="preview" className="h-full w-full object-cover" />
-                    : <>
+                    ? <SquareMealImage src={imagePreview} alt="preview" className="max-h-64" />
+                    : <div className="flex h-32 w-full flex-col items-center justify-center">
                         <FiUploadCloud className="text-2xl text-[#8F00FF]" />
-                        <p className="mt-2 text-[13px] font-medium text-slate-700">Carica immagine</p>
-                        <p className="text-[11px] text-slate-400">JPEG, PNG, WebP</p>
-                      </>}
+                        <p className="mt-2 text-[13px] font-medium text-slate-700">Carica immagine 1:1</p>
+                        <p className="text-[11px] text-slate-400">Formato quadrato consigliato. JPEG, PNG, WebP</p>
+                      </div>}
                 </button>
               </div>
 
@@ -658,6 +666,16 @@ export default function Butrition() {
                   </div>
                 </div>
               </div>
+
+              <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-[13px] font-semibold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={form.isQuickMeal}
+                  onChange={(e) => setForm((f) => ({ ...f, isQuickMeal: e.target.checked }))}
+                  className="h-4 w-4 accent-[#8F00FF]"
+                />
+                PASTO VELOCE
+              </label>
 
               {/* Nutrition */}
               <div>

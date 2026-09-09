@@ -19,5 +19,6 @@ export interface INutrition {
   portionSize: number; // in grams
   image?: string;
   description?: string;
+  isQuickMeal?: boolean;
   nutrition: INutritionInfo;
 }

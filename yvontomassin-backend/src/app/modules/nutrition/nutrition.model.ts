@@ -12,6 +12,7 @@ const NutritionSchema = new Schema<INutrition>(
     portionSize: { type: Number, required: true }, // grams
     image: { type: String, default: null },
     description: { type: String, default: null },
+    isQuickMeal: { type: Boolean, default: false },
     nutrition: {
       calories: { type: Number, required: true },
       protein: { type: Number, required: true },

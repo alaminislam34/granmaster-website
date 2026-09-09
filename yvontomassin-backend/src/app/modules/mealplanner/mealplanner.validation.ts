@@ -19,6 +19,7 @@ const createMealValidation = z.object({
     fat: z.number().min(0).default(0),
     // calorieRange auto-derived from calories if omitted
     calorieRange: z.enum([...CALORIE_RANGES] as [string, ...string[]]).optional(),
+    isQuickMeal: z.boolean().optional(),
   }),
 });
 
@@ -31,6 +32,7 @@ const updateMealValidation = z.object({
     carbohydrates: z.number().min(0).optional(),
     fat: z.number().min(0).optional(),
     calorieRange: z.enum([...CALORIE_RANGES] as [string, ...string[]]).optional(),
+    isQuickMeal: z.boolean().optional(),
   }),
 });
 
@@ -56,6 +58,17 @@ const createPlanAndFillValidation = z.object({
       .min(3, 'slotCalorieRanges must have at least 3 entries')
       .max(6, 'slotCalorieRanges must have at most 6 entries'),
     date: z.string().optional(), // ISO date; defaults to today
+    // Optional extras — omitted by old clients, so live generate stays the same
+    quickMealsOnly: z.boolean().optional(),
+    slotProteinRanges: z
+      .array(z.object({ min: z.number().min(0), max: z.number().min(0) }))
+      .optional(),
+    slotCarbRanges: z
+      .array(z.object({ min: z.number().min(0), max: z.number().min(0) }))
+      .optional(),
+    slotFatRanges: z
+      .array(z.object({ min: z.number().min(0), max: z.number().min(0) }))
+      .optional(),
   }),
 });
 
@@ -65,6 +78,14 @@ const varianteValidation = z.object({
     planId: z.string({ message: 'planId is required' }),
     slotIndex: z.number({ message: 'slotIndex is required' }).int().min(0),
     currentMealId: z.string({ message: 'currentMealId is required' }),
+    fewerCaloriesOnly: z.boolean().optional(),
+  }),
+});
+
+const clearSlotMealValidation = z.object({
+  body: z.object({
+    planId: z.string({ message: 'planId is required' }),
+    slotIndex: z.number({ message: 'slotIndex is required' }).int().min(0),
   }),
 });
 
@@ -91,6 +112,7 @@ export const MealPlannerValidation = {
   updateMealValidation,
   createPlanAndFillValidation,
   varianteValidation,
+  clearSlotMealValidation,
   addCheatMealValidation,
   removeCheatMealValidation,
 };

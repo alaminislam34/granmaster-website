@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
 import { getImageUrl } from "@/src/lib/imageUrl";
+import SquareMealImage from "@/src/components/Shared/SquareMealImage";
 
 interface CheatMealFromAPI {
   _id: string;
@@ -34,16 +35,16 @@ export default function Cheat({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-md p-4">
       <div className="w-full max-w-3xl lg:max-w-5xl rounded-2xl bg-white p-6 md:p-8 lg:p-12 max-h-[90vh] overflow-auto">
-        <h2 className="text-center text-xl font-semibold text-black">Seleziona Cheat Pasto</h2>
+        <h2 className="text-center text-xl font-semibold text-black">Programma lo sgarro</h2>
         <p className="mt-2 text-center text-sm text-gray-500">
-          Scegli un pasto cheat dal tuo catalogo.
+          Scegli uno sgarro dal catalogo.
         </p>
 
         {loading ? (
-          <div className="mt-8 text-center text-gray-400 text-sm">Caricamento pasti cheat...</div>
+          <div className="mt-8 text-center text-gray-400 text-sm">Caricamento...</div>
         ) : meals.length === 0 ? (
           <div className="mt-8 text-center text-gray-400 text-sm">
-            Nessun pasto cheat disponibile. Aggiungine uno dal pannello admin.
+            Nessuno sgarro disponibile. Aggiungine uno dal pannello admin.
           </div>
         ) : (
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -59,11 +60,7 @@ export default function Cheat({
                       : "border-gray-100 hover:border-[#8F00FF]"
                   }`}
                 >
-                  <div className="w-full overflow-hidden bg-gray-100">
-                    {imgSrc
-                      ? <img src={imgSrc} alt={meal.name} className="h-28 sm:h-36 lg:h-44 w-full object-cover" />
-                      : <div className="h-28 sm:h-36 lg:h-44 w-full flex items-center justify-center text-5xl bg-gray-50">🍔</div>}
-                  </div>
+                  <SquareMealImage src={imgSrc} alt={meal.name} fallback="🍔" />
                   <div className="w-full px-4 py-3">
                     <div className="text-sm font-semibold text-gray-900">{meal.name}</div>
                     <div className="mt-1 text-xs text-gray-500 line-clamp-2">{meal.description}</div>
@@ -92,7 +89,7 @@ export default function Cheat({
             disabled={!selected}
             className="w-full sm:w-auto rounded-full bg-[#8F00FF] hover:bg-[#7A00E5] text-white px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:bg-gray-200 transition"
           >
-            Aggiungi Cheat Meal
+            AGGIUNGI LO SGARRO
           </button>
         </div>
       </div>

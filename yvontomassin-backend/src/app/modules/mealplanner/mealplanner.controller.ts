@@ -238,6 +238,17 @@ const removeCheatMeal = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const clearSlotMeal = catchAsync(async (req: Request, res: Response) => {
+  const result = await mealPlannerService.clearSlotMeal(req.body);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Meal removed from day successfully',
+    data: result,
+  });
+});
+
 export const mealPlannerController = {
   // Meals
   createMeal,
@@ -254,6 +265,7 @@ export const mealPlannerController = {
   deleteMealPlan,
   // Actions
   variante,
+  clearSlotMeal,
   addCheatMeal,
   removeCheatMeal,
 };

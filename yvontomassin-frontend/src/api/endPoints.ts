@@ -33,7 +33,11 @@ export const ENDPOINTS = {
   mealPlannerVariante: '/mealPlanner/plans/variante',
   mealPlannerCheatDay: '/mealPlanner/plans/cheat-day',
   mealPlannerRemoveCheat: '/mealPlanner/plans/remove-cheat',
+  mealPlannerClearSlot: '/mealPlanner/plans/clear-slot',
   mealPlannerTodayPlan: '/mealPlanner/plans/today',
   mealPlannerUserPlans: '/mealPlanner/plans/user',
   mealPlannerPlanById: '/mealPlanner/plans',
+
+  // Saved days / strategies (server + PDF)
+  saved: '/saved',
 };

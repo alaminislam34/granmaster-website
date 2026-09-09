@@ -19,7 +19,7 @@ import {
 
 /** Fields to populate when returning a full meal plan */
 const MEAL_POPULATE_FIELDS =
-  'name category calories protein carbohydrates fat calorieRange image description';
+  'name category calories protein carbohydrates fat calorieRange image description isQuickMeal';
 
 /**
  * Re-compute all daily totals and over-budget status, then persist.
@@ -87,6 +87,16 @@ const recalcPlan = async (planId: Types.ObjectId | string) => {
     .populate('cheatMeals.cheatMealRef', 'name nutrition image description');
 };
 
+type MacroRange = { min: number; max: number };
+
+const constraintFromRange = (range?: MacroRange) => {
+  if (!range) return undefined;
+  const q: Record<string, number> = {};
+  if (range.min > 0) q.$gte = range.min;
+  if (range.max > 0 && range.max < 9999) q.$lte = range.max;
+  return Object.keys(q).length ? q : undefined;
+};
+
 /**
  * Pick a random meal within an exact calorie range [minCal, maxCal].
  * 1. Exact range + same category
@@ -97,12 +107,13 @@ const pickRandomMealForCalories = async (
   category: string,
   minCal: number,
   maxCal: number,
-  excludeId?: string
+  excludeId?: string,
+  extra: Record<string, unknown> = {}
 ) => {
   const excludeFilter = excludeId ? { $ne: new Types.ObjectId(excludeId) } : undefined;
 
-  const build = (extra: Record<string, unknown>) => {
-    const f: Record<string, unknown> = { category, ...extra };
+  const build = (calorieFilter: Record<string, unknown>) => {
+    const f: Record<string, unknown> = { category, ...extra, ...calorieFilter };
     if (excludeFilter) f._id = excludeFilter;
     return f;
   };
@@ -125,8 +136,11 @@ const pickRandomMealForCalories = async (
 // ═══════════════════════════════════════════════════════════════════
 
 const createMeal = async (data: IMeal, imageFile?: Express.Multer.File) => {
-  if (!data.calorieRange) {
-    data.calorieRange = getCalorieRange(data.calories);
+  const payload: Partial<IMeal> = { ...data };
+  delete payload.image;
+
+  if (!payload.calorieRange && payload.calories !== undefined) {
+    payload.calorieRange = getCalorieRange(payload.calories);
   }
 
   let uploadedImageUrl: string | null = null;
@@ -134,11 +148,11 @@ const createMeal = async (data: IMeal, imageFile?: Express.Multer.File) => {
   if (imageFile) {
     const uploaded = await s3Service.uploadImage(imageFile, 'meals');
     uploadedImageUrl = uploaded.url;
-    data.image = uploaded.url;
+    payload.image = uploaded.url;
   }
 
   try {
-    return await MealModel.create(data);
+    return await MealModel.create(payload as IMeal);
   } catch (error) {
     await s3Service.deleteImageBestEffort(uploadedImageUrl);
     throw error;
@@ -149,6 +163,9 @@ const getAllMeals = async (query: Record<string, unknown> = {}) => {
   const filter: Record<string, unknown> = {};
   if (query.category) filter.category = query.category;
   if (query.calorieRange) filter.calorieRange = query.calorieRange;
+  if (query.isQuickMeal === 'true' || query.isQuickMeal === true) {
+    filter.isQuickMeal = true;
+  }
   return await MealModel.find(filter).sort({ createdAt: -1 });
 };
 
@@ -164,8 +181,11 @@ const updateMeal = async (
   const existing = await MealModel.findById(id);
   if (!existing) return null;
 
-  if (payload.calories !== undefined && !payload.calorieRange) {
-    payload.calorieRange = getCalorieRange(payload.calories);
+  const safePayload: Partial<IMeal> = { ...payload };
+  delete safePayload.image;
+
+  if (safePayload.calories !== undefined && !safePayload.calorieRange) {
+    safePayload.calorieRange = getCalorieRange(safePayload.calories);
   }
 
   let uploadedImageUrl: string | null = null;
@@ -173,12 +193,12 @@ const updateMeal = async (
   if (imageFile) {
     const uploaded = await s3Service.uploadImage(imageFile, 'meals');
     uploadedImageUrl = uploaded.url;
-    payload.image = uploaded.url;
+    safePayload.image = uploaded.url;
   }
 
   let result;
   try {
-    result = await MealModel.findByIdAndUpdate(id, payload, {
+    result = await MealModel.findByIdAndUpdate(id, safePayload, {
       new: true,
       runValidators: true,
     });
@@ -229,6 +249,10 @@ const createPlanAndFill = async (payload: {
   fatGoal: number;
   slotCalorieRanges: { min: number; max: number }[];
   date?: string;
+  quickMealsOnly?: boolean;
+  slotProteinRanges?: MacroRange[];
+  slotCarbRanges?: MacroRange[];
+  slotFatRanges?: MacroRange[];
 }) => {
   const {
     userId,
@@ -239,6 +263,10 @@ const createPlanAndFill = async (payload: {
     fatGoal,
     slotCalorieRanges,
     date,
+    quickMealsOnly,
+    slotProteinRanges,
+    slotCarbRanges,
+    slotFatRanges,
   } = payload;
 
   const structure = MEAL_STRUCTURES[mealCount];
@@ -260,12 +288,23 @@ const createPlanAndFill = async (payload: {
     const { min, max } = slotCalorieRanges[i];
     const targetCalories = Math.round((min + max) / 2);
 
-    const meal = await pickRandomMealForCalories(category, min, max);
+    const extra: Record<string, unknown> = {};
+    if (quickMealsOnly) extra.isQuickMeal = true;
+    const proteinQ = constraintFromRange(slotProteinRanges?.[i]);
+    const carbQ = constraintFromRange(slotCarbRanges?.[i]);
+    const fatQ = constraintFromRange(slotFatRanges?.[i]);
+    if (proteinQ) extra.protein = proteinQ;
+    if (carbQ) extra.carbohydrates = carbQ;
+    if (fatQ) extra.fat = fatQ;
+
+    const meal = await pickRandomMealForCalories(category, min, max, undefined, extra);
 
     if (!meal) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        `Nessun pasto trovato per "${slot}" nel range ${min}–${max} kcal. Aggiungi pasti nel range corretto o modifica le impostazioni.`
+        quickMealsOnly
+          ? `Nessun pasto veloce trovato per "${slot}" nel range ${min}–${max} kcal.`
+          : `Nessun pasto trovato per "${slot}" nel range ${min}–${max} kcal. Aggiungi pasti nel range corretto o modifica le impostazioni.`
       );
     }
 
@@ -358,8 +397,9 @@ const variante = async (payload: {
   planId: string;
   slotIndex: number;
   currentMealId: string;
+  fewerCaloriesOnly?: boolean;
 }) => {
-  const { planId, slotIndex, currentMealId } = payload;
+  const { planId, slotIndex, currentMealId, fewerCaloriesOnly } = payload;
 
   const plan = await MealPlanModel.findById(planId);
   if (!plan) throw new AppError(StatusCodes.NOT_FOUND, 'Meal plan not found');
@@ -380,7 +420,12 @@ const variante = async (payload: {
 
   let candidates;
 
-  if (plan.isOverBudget) {
+  if (fewerCaloriesOnly) {
+    candidates = await MealModel.find({
+      _id: { $ne: new Types.ObjectId(currentMealId) },
+      calories: { $lt: currentMeal.calories },
+    }).sort({ calories: -1 });
+  } else if (plan.isOverBudget) {
     candidates = await MealModel.find({
       _id: { $ne: new Types.ObjectId(currentMealId) },
       category: slot.category,
@@ -407,7 +452,7 @@ const variante = async (payload: {
   if (!candidates.length) {
     throw new AppError(
       StatusCodes.NOT_FOUND,
-      plan.isOverBudget
+      fewerCaloriesOnly || plan.isOverBudget
         ? 'Nessuna alternativa con meno calorie trovata per questo pasto.'
         : `Nessun altro pasto trovato nel range ${slotMin}–${slotMax} kcal per "${slot.slot}". Aggiungi più pasti in questo range dal pannello admin.`
     );
@@ -476,6 +521,24 @@ const removeCheatMeal = async (payload: {
   return await recalcPlan(plan._id as Types.ObjectId);
 };
 
+const clearSlotMeal = async (payload: {
+  planId: string;
+  slotIndex: number;
+}) => {
+  const { planId, slotIndex } = payload;
+
+  const plan = await MealPlanModel.findById(planId);
+  if (!plan) throw new AppError(StatusCodes.NOT_FOUND, 'Meal plan not found');
+
+  if (slotIndex < 0 || slotIndex >= plan.slots.length) {
+    throw new AppError(StatusCodes.BAD_REQUEST, 'Invalid slot index');
+  }
+
+  plan.slots[slotIndex].meal = null;
+  await plan.save();
+  return await recalcPlan(plan._id as Types.ObjectId);
+};
+
 // ═══════════════════════════════════════════════════════════════════
 //  EXPORTS
 // ═══════════════════════════════════════════════════════════════════
@@ -496,6 +559,7 @@ export const mealPlannerService = {
   deleteMealPlan,
   // Actions
   variante,
+  clearSlotMeal,
   addCheatMeal,
   removeCheatMeal,
 };

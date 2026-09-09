@@ -7,6 +7,7 @@ import nutritionRouter from '../app/modules/nutrition/nutrition.route';
 import cheatRouter from '../app/modules/cheat/cheat.route';
 import mealPlannerRouter from '../app/modules/mealplanner/mealplanner.route';
 import imageRouter from '../app/modules/image/image.route';
+import savedRouter from '../app/modules/saved/saved.route';
 
 const router = Router();
 
@@ -42,6 +43,10 @@ const moduleRoutes = [
   {
     path: '/images',
     route: imageRouter,
+  },
+  {
+    path: '/saved',
+    route: savedRouter,
   },
 ];
 
