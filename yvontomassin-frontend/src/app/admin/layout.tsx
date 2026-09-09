@@ -33,6 +33,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (user?.name && !profileName) setProfileName(user.name);
   }, [profileName, setProfileName]);
 
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsMobileMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [isMobileMenuOpen]);
+
   const handleLogout = async () => {
     await logout();
     // Clear profile context cache
@@ -53,7 +67,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {isMobileMenuOpen && (
           <button
-            className="fixed inset-0 z-30 bg-slate-900/40 md:hidden"
+            className="fixed inset-0 z-30 bg-black/40 md:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
             aria-label="Close menu overlay"
           />

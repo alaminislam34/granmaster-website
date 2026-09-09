@@ -245,7 +245,7 @@ export default function Home() {
   }
 
   return (
-    <div className="bg-[#f6f4f1] py-10 sm:py-12">
+    <div className="bg-[#f5f4f0] py-10 sm:py-12">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
         <div className="overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)]">
 

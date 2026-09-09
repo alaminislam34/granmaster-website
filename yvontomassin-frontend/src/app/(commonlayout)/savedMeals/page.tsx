@@ -10,10 +10,14 @@ import {
   listSavedContent,
   type SavedContentItem,
 } from "@/src/lib/savedContent";
+import { SavedItemSkeleton } from "@/src/components/Shared/skeletons";
+import ConfirmModal from "@/src/components/Shared/ConfirmModal";
 
 export default function SavedMealsPage() {
   const [items, setItems] = useState<SavedContentItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<SavedContentItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function refresh() {
     const user = getCurrentUser();
@@ -43,13 +47,18 @@ export default function SavedMealsPage() {
     }
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await deleteSavedContent(id);
-      setItems((prev) => prev.filter((item) => item._id !== id));
+      await deleteSavedContent(deleteTarget._id);
+      setItems((prev) => prev.filter((item) => item._id !== deleteTarget._id));
       toast.success("Contenuto rimosso.");
+      setDeleteTarget(null);
     } catch {
       toast.error("Eliminazione fallita.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -70,7 +79,21 @@ export default function SavedMealsPage() {
             Accedi per vedere i contenuti salvati su tutti i dispositivi.
           </p>
         ) : loading ? (
-          <p className="mt-6 text-sm text-gray-500">Caricamento...</p>
+          <div className="mt-8 space-y-8" aria-busy="true">
+            <div>
+              <div className="h-6 w-40 animate-pulse rounded bg-gray-200" />
+              <div className="mt-3 space-y-3">
+                <SavedItemSkeleton />
+                <SavedItemSkeleton />
+              </div>
+            </div>
+            <div>
+              <div className="h-6 w-44 animate-pulse rounded bg-gray-200" />
+              <div className="mt-3 space-y-3">
+                <SavedItemSkeleton />
+              </div>
+            </div>
+          </div>
         ) : (
           <>
             <SavedSection
@@ -78,14 +101,14 @@ export default function SavedMealsPage() {
               empty="Nessuna giornata salvata. Dal piano pasto usa SALVA QUESTA GIORNATA."
               items={meals}
               onOpen={handleOpen}
-              onDelete={handleDelete}
+              onDelete={setDeleteTarget}
             />
             <SavedSection
               title="Strategie salvate"
               empty="Nessuna strategia salvata. Dallo sgarro usa SALVA STRATEGIA."
               items={strategies}
               onOpen={handleOpen}
-              onDelete={handleDelete}
+              onDelete={setDeleteTarget}
             />
           </>
         )}
@@ -94,6 +117,20 @@ export default function SavedMealsPage() {
           Torna ai piani pasto →
         </Link>
       </div>
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        onClose={() => { if (!deleting) setDeleteTarget(null); }}
+        onConfirm={() => void handleDelete()}
+        loading={deleting}
+        title="Eliminare questo contenuto?"
+        description={
+          <>
+            Stai per rimuovere{" "}
+            <span className="font-semibold text-slate-800">{deleteTarget?.title}</span>.
+          </>
+        }
+      />
     </section>
   );
 }
@@ -109,7 +146,7 @@ function SavedSection({
   empty: string;
   items: SavedContentItem[];
   onOpen: (item: SavedContentItem) => void;
-  onDelete: (id: string) => void;
+  onDelete: (item: SavedContentItem) => void;
 }) {
   return (
     <div className="mt-8">
@@ -137,7 +174,7 @@ function SavedSection({
                     Scarica PDF
                   </button>
                   <button
-                    onClick={() => onDelete(item._id)}
+                    onClick={() => onDelete(item)}
                     className="rounded-full border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-red-50 hover:text-red-600"
                   >
                     Elimina

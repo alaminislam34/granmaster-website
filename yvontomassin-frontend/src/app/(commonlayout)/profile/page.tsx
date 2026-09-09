@@ -9,6 +9,7 @@ import { getCurrentUser } from "@/src/lib/authService";
 import { useProfile } from "@/src/context/ProfileContext";
 import { toast } from "sonner";
 import { getImageUrl } from "@/src/lib/imageUrl";
+import { ProfilePageSkeleton } from "@/src/components/Shared/skeletons";
 
 interface UserProfile {
   _id: string;
@@ -172,20 +173,12 @@ export default function ProfilePage() {
   const avatarSrc = imagePreview
     ?? getImageUrl(profile?.profileImage);
 
-  // ─── Loading skeleton ─────────────────────────────────────────────────────────
   if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-[#8F00FF] border-t-transparent" />
-          <p className="mt-3 text-sm text-gray-500">Caricamento profilo...</p>
-        </div>
-      </div>
-    );
+    return <ProfilePageSkeleton />;
   }
 
   return (
-    <div className="bg-[#f6f4f1] min-h-screen py-10">
+    <div className="min-h-screen bg-[#f5f4f0] py-10">
       <div className="mx-auto w-full max-w-4xl px-4 sm:px-6 space-y-6">
 
         {/* ── Header card ── */}

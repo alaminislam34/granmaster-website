@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  FiTrash2, FiEye, FiX, FiSearch,
+  FiTrash2, FiEye, FiSearch,
   FiChevronLeft, FiChevronRight, FiUsers, FiUserCheck,
   FiUserX, FiShield,
 } from "react-icons/fi";
@@ -10,6 +10,10 @@ import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
 import { toast } from "sonner";
 import { getImageUrl } from "@/src/lib/imageUrl";
+import Modal from "@/src/components/Shared/Modal";
+import ConfirmModal from "@/src/components/Shared/ConfirmModal";
+import Bone from "@/src/components/Shared/Bone";
+import { UserTableRowSkeleton } from "@/src/components/Shared/skeletons";
 const PAGE_SIZE = 8;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -68,14 +72,8 @@ function ViewModal({ user, onClose }: { user: User; onClose: () => void }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-        <div className="flex items-start justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Dettagli utente</h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-slate-100 text-slate-500"><FiX /></button>
-        </div>
-
-        <div className="mt-5 flex items-center gap-4">
+    <Modal open onClose={onClose} title="Dettagli utente" size="md">
+        <div className="flex items-center gap-4">
           <UserAvatar user={user} size="lg" />
           <div>
             <p className="text-lg font-semibold text-slate-900">{user.name}</p>
@@ -103,8 +101,7 @@ function ViewModal({ user, onClose }: { user: User; onClose: () => void }) {
         >
           Chiudi
         </button>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -167,13 +164,7 @@ function EditModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-        <div className="flex items-start justify-between mb-5">
-          <h2 className="text-lg font-semibold text-slate-900">Modifica utente</h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-slate-100 text-slate-500"><FiX /></button>
-        </div>
-
+    <Modal open onClose={onClose} title="Modifica utente" size="md">
         <form onSubmit={handleSave} className="space-y-3">
           {field("Nome completo", "name")}
           {field("Telefono",      "phone", "tel")}
@@ -206,8 +197,7 @@ function EditModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -294,7 +284,7 @@ export default function Dashboard() {
                   </span>
                 </div>
                 <p className="mt-3 text-[32px] font-semibold leading-none text-slate-900">
-                  {loading ? <span className="inline-block h-7 w-10 animate-pulse rounded bg-slate-200" /> : s.value}
+                  {loading ? <Bone className="inline-block h-7 w-10" /> : s.value}
                 </p>
               </div>
             );
@@ -338,13 +328,7 @@ export default function Dashboard() {
               <tbody className="divide-y divide-slate-100 text-[13px] text-slate-700">
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}>
-                      {Array.from({ length: 6 }).map((_, j) => (
-                        <td key={j} className="px-5 py-3">
-                          <div className="h-4 w-full animate-pulse rounded bg-slate-100" />
-                        </td>
-                      ))}
-                    </tr>
+                    <UserTableRowSkeleton key={i} />
                   ))
                 ) : paginated.length === 0 ? (
                   <tr>
@@ -454,46 +438,21 @@ export default function Dashboard() {
         />
       )}
 
-      {/* ── Delete confirm modal ── */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
-            {/* Icon */}
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
-              <FiTrash2 className="h-6 w-6 text-red-600" />
-            </div>
-
-            <div className="mt-4 text-center">
-              <h3 className="text-base font-semibold text-slate-900">
-                Eliminare questo utente?
-              </h3>
-              <p className="mt-2 text-sm text-slate-500">
-                Stai per eliminare{" "}
-                <span className="font-semibold text-slate-800">{deleteTarget.name}</span>.
-                <br />
-                Questa azione è <span className="text-red-600 font-medium">irreversibile</span>.
-              </p>
-            </div>
-
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                disabled={deleting}
-                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 transition"
-              >
-                Annulla
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60 transition"
-              >
-                {deleting ? "Eliminazione..." : "Sì, elimina"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        open={!!deleteTarget}
+        onClose={() => { if (!deleting) setDeleteTarget(null); }}
+        onConfirm={() => void handleDelete()}
+        loading={deleting}
+        title="Eliminare questo utente?"
+        description={
+          <>
+            Stai per eliminare{" "}
+            <span className="font-semibold text-slate-800">{deleteTarget?.name}</span>.
+            <br />
+            Questa azione è <span className="font-medium text-red-600">irreversibile</span>.
+          </>
+        }
+      />
     </>
   );
 }

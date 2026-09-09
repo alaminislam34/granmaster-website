@@ -13,6 +13,9 @@ import { ENDPOINTS } from "@/src/api/endPoints";
 import { toast } from "sonner";
 import { getImageUrl } from "@/src/lib/imageUrl";
 import SquareMealImage from "@/src/components/Shared/SquareMealImage";
+import Modal from "@/src/components/Shared/Modal";
+import ConfirmModal from "@/src/components/Shared/ConfirmModal";
+import { MealTableRowSkeleton } from "@/src/components/Shared/skeletons";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type MealCategory = "Breakfast" | "Lunch" | "Dinner" | "Snack" ;
@@ -73,6 +76,8 @@ export default function Butrition() {
   const [saving, setSaving]         = useState(false);
   const [formError, setFormError]   = useState("");
   const fileInputRef                = useRef<HTMLInputElement>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Meal | null>(null);
+  const [deleting, setDeleting]     = useState(false);
 
   // ─── Fetch all ─────────────────────────────────────────────────────────────
   const fetchMeals = useCallback(async () => {
@@ -89,14 +94,6 @@ export default function Butrition() {
   }, []);
 
   useEffect(() => { fetchMeals(); }, [fetchMeals]);
-
-  // ─── ESC close ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!modalOpen) return;
-    const fn = (e: KeyboardEvent) => { if (e.key === "Escape") closeModal(); };
-    window.addEventListener("keydown", fn);
-    return () => window.removeEventListener("keydown", fn);
-  }, [modalOpen]);
 
   // ─── Modal helpers ─────────────────────────────────────────────────────────
   function openCreate() {
@@ -196,14 +193,18 @@ export default function Butrition() {
   }
 
   // ─── Delete ────────────────────────────────────────────────────────────────
-  async function handleDelete(id: string) {
-    if (!confirm("Eliminare questo pasto?")) return;
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await baseApi.delete(`${ENDPOINTS.nutrition}/${id}`);
-      setMeals((prev) => prev.filter((m) => m._id !== id));
+      await baseApi.delete(`${ENDPOINTS.nutrition}/${deleteTarget._id}`);
+      setMeals((prev) => prev.filter((m) => m._id !== deleteTarget._id));
       toast.success("Pasto eliminato.");
+      setDeleteTarget(null);
     } catch {
       toast.error("Eliminazione fallita.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -483,7 +484,9 @@ export default function Butrition() {
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white text-[13px] text-slate-700">
                 {loading ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Caricamento...</td></tr>
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <MealTableRowSkeleton key={i} columns={7} />
+                  ))
                 ) : paginated.length === 0 ? (
                   <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Nessun pasto trovato.</td></tr>
                 ) : paginated.map((meal) => {
@@ -521,7 +524,7 @@ export default function Butrition() {
                           <button onClick={() => openEdit(meal)} className="rounded-md p-1.5 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Edit">
                             <FiEdit2 className="text-sm" />
                           </button>
-                          <button onClick={() => handleDelete(meal._id)} className="rounded-md p-1.5 transition hover:bg-red-50 hover:text-red-600" aria-label="Delete">
+                          <button onClick={() => setDeleteTarget(meal)} className="rounded-md p-1.5 transition hover:bg-red-50 hover:text-red-600" aria-label="Delete">
                             <FiTrash2 className="text-sm" />
                           </button>
                         </div>
@@ -556,16 +559,15 @@ export default function Butrition() {
 
       {/* ─── Modal ─────────────────────────────────────────────────────────── */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/45 px-3 py-4 sm:px-4 sm:py-8">
-          <button className="absolute inset-0" onClick={closeModal} aria-label="Close" />
-
-          <div className="relative z-10 my-auto w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl sm:rounded-3xl sm:p-8">
-            <h2 className="text-[24px] font-semibold tracking-tight text-[#8F00FF] sm:text-[32px]">
-              {editId ? "Modifica pasto" : "Crea un nuovo pasto"}
-            </h2>
-            <p className="mt-1 text-[13px] text-slate-500">
-              Definisci il profilo nutrizionale per il pasto.
-            </p>
+        <Modal
+          open
+          onClose={closeModal}
+          title={editId ? "Modifica pasto" : "Crea un nuovo pasto"}
+          size="lg"
+        >
+          <p className="-mt-2 text-[13px] text-slate-500">
+            Definisci il profilo nutrizionale per il pasto.
+          </p>
 
             {formError && (
               <div className="mt-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600 border border-red-200">{formError}</div>
@@ -749,9 +751,23 @@ export default function Butrition() {
                 {saving ? "Salvataggio..." : editId ? "Salva modifiche" : "Pubblica pasto"}
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        onClose={() => { if (!deleting) setDeleteTarget(null); }}
+        onConfirm={() => void handleDelete()}
+        loading={deleting}
+        title="Eliminare questo pasto?"
+        description={
+          <>
+            Stai per eliminare{" "}
+            <span className="font-semibold text-slate-800">{deleteTarget?.name}</span>.
+            Questa azione è irreversibile.
+          </>
+        }
+      />
     </>
   );
 }

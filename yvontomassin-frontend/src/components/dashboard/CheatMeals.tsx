@@ -13,6 +13,9 @@ import { ENDPOINTS } from "@/src/api/endPoints";
 import { toast } from "sonner";
 import { getImageUrl } from "@/src/lib/imageUrl";
 import SquareMealImage from "@/src/components/Shared/SquareMealImage";
+import Modal from "@/src/components/Shared/Modal";
+import ConfirmModal from "@/src/components/Shared/ConfirmModal";
+import { MealTableRowSkeleton } from "@/src/components/Shared/skeletons";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface CheatNutrition { calories: number; protein: number; carbohydrates: number; fat: number; }
@@ -39,6 +42,8 @@ export default function CheatMeals() {
   const [saving, setSaving]       = useState(false);
   const [formError, setFormError] = useState("");
   const fileInputRef              = useRef<HTMLInputElement>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CheatMeal | null>(null);
+  const [deleting, setDeleting]   = useState(false);
 
   // ─── Fetch ──────────────────────────────────────────────────────────────────
   const fetchMeals = useCallback(async () => {
@@ -55,14 +60,6 @@ export default function CheatMeals() {
   }, []);
 
   useEffect(() => { fetchMeals(); }, [fetchMeals]);
-
-  // ESC close
-  useEffect(() => {
-    if (!modalOpen) return;
-    const fn = (e: KeyboardEvent) => { if (e.key === "Escape") closeModal(); };
-    window.addEventListener("keydown", fn);
-    return () => window.removeEventListener("keydown", fn);
-  }, [modalOpen]);
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
   function openCreate() {
@@ -172,14 +169,18 @@ export default function CheatMeals() {
   }
 
   // ─── Delete ──────────────────────────────────────────────────────────────────
-  async function handleDelete(id: string) {
-    if (!confirm("Eliminare questo sgarro?")) return;
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await baseApi.delete(`${ENDPOINTS.cheat}/${id}`);
-      setMeals((prev) => prev.filter((m) => m._id !== id));
+      await baseApi.delete(`${ENDPOINTS.cheat}/${deleteTarget._id}`);
+      setMeals((prev) => prev.filter((m) => m._id !== deleteTarget._id));
       toast.success("Sgarro eliminato.");
+      setDeleteTarget(null);
     } catch {
       toast.error("Eliminazione fallita.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -268,7 +269,9 @@ export default function CheatMeals() {
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white text-[13px] text-slate-700">
                 {loading ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">Caricamento...</td></tr>
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <MealTableRowSkeleton key={i} columns={6} />
+                  ))
                 ) : paginated.length === 0 ? (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">Nessuno sgarro trovato.</td></tr>
                 ) : paginated.map((meal) => {
@@ -295,7 +298,7 @@ export default function CheatMeals() {
                           <button onClick={() => openEdit(meal)} className="rounded-md p-1.5 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Edit">
                             <FiEdit2 className="text-sm" />
                           </button>
-                          <button onClick={() => handleDelete(meal._id)} className="rounded-md p-1.5 transition hover:bg-red-50 hover:text-red-600" aria-label="Delete">
+                          <button onClick={() => setDeleteTarget(meal)} className="rounded-md p-1.5 transition hover:bg-red-50 hover:text-red-600" aria-label="Delete">
                             <FiTrash2 className="text-sm" />
                           </button>
                         </div>
@@ -330,16 +333,15 @@ export default function CheatMeals() {
 
       {/* ─── Modal ──────────────────────────────────────────────────────────── */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/45 px-3 py-4 sm:px-4 sm:py-8">
-          <button className="absolute inset-0" onClick={closeModal} aria-label="Close" />
-
-          <div className="relative z-10 my-auto w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl sm:rounded-3xl sm:p-8">
-            <h2 className="text-[24px] font-semibold tracking-tight text-slate-900 sm:text-[32px]">
-              {editId ? "Modifica sgarro" : "Aggiungi uno sgarro"}
-            </h2>
-            <p className="mt-1 text-[13px] text-slate-500">
-              Documenta la tua indulgenza culinaria con precisione e stile.
-            </p>
+        <Modal
+          open
+          onClose={closeModal}
+          title={editId ? "Modifica sgarro" : "Aggiungi uno sgarro"}
+          size="lg"
+        >
+          <p className="-mt-2 text-[13px] text-slate-500">
+            Documenta la tua indulgenza culinaria con precisione e stile.
+          </p>
 
             {formError && (
               <div className="mt-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600 border border-red-200">{formError}</div>
@@ -421,9 +423,23 @@ export default function CheatMeals() {
                 {saving ? "Salvataggio..." : editId ? "Salva modifiche" : "Pubblica sgarro"}
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        onClose={() => { if (!deleting) setDeleteTarget(null); }}
+        onConfirm={() => void handleDelete()}
+        loading={deleting}
+        title="Eliminare questo sgarro?"
+        description={
+          <>
+            Stai per eliminare{" "}
+            <span className="font-semibold text-slate-800">{deleteTarget?.name}</span>.
+            Questa azione è irreversibile.
+          </>
+        }
+      />
     </>
   );
 }
