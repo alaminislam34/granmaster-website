@@ -384,14 +384,10 @@ const deleteMealPlan = async (planId: string) => {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Normal mode:
- *   - Find the calorieRange of the current meal (derive it from calories
- *     if the stored field is missing — backward-compatible fix).
- *   - Return a random meal in the SAME calorieRange, SAME category,
- *     that is NOT the current meal.
- *
- * Over-budget mode (isOverBudget === true):
- *   - Only suggest meals with FEWER calories than the current meal.
+ * VARIANTE always stays on this slot's category (dinner → dinner) and
+ * picks a different meal with approximately the same calories.
+ * Sgarro is a separate action — never used as a "fewer calories" swap.
+ * fewerCaloriesOnly is accepted from older clients and ignored.
  */
 const variante = async (payload: {
   planId: string;
@@ -399,7 +395,7 @@ const variante = async (payload: {
   currentMealId: string;
   fewerCaloriesOnly?: boolean;
 }) => {
-  const { planId, slotIndex, currentMealId, fewerCaloriesOnly } = payload;
+  const { planId, slotIndex, currentMealId } = payload;
 
   const plan = await MealPlanModel.findById(planId);
   if (!plan) throw new AppError(StatusCodes.NOT_FOUND, 'Meal plan not found');
@@ -411,50 +407,37 @@ const variante = async (payload: {
   if (!currentMeal)
     throw new AppError(StatusCodes.NOT_FOUND, 'Current meal not found');
 
+  const excludeId = new Types.ObjectId(currentMealId);
+  const currentCalories = currentMeal.calories;
+  const sameRange: CalorieRange =
+    currentMeal.calorieRange || getCalorieRange(currentCalories);
 
-  // Use stored min/max — use null check (not falsy) so 0 doesn't trigger fallback
-  const rawMin = (slot as any).targetCaloriesMin;
-  const rawMax = (slot as any).targetCaloriesMax;
-  const slotMin = (rawMin != null && rawMin > 0) ? rawMin : Math.floor(slot.targetCalories * 0.8);
-  const slotMax = (rawMax != null && rawMax > 0) ? rawMax : Math.ceil(slot.targetCalories * 1.2);
-
-  let candidates;
-
-  if (fewerCaloriesOnly) {
-    candidates = await MealModel.find({
-      _id: { $ne: new Types.ObjectId(currentMealId) },
-      calories: { $lt: currentMeal.calories },
-    }).sort({ calories: -1 });
-  } else if (plan.isOverBudget) {
-    candidates = await MealModel.find({
-      _id: { $ne: new Types.ObjectId(currentMealId) },
+  const findInSlot = (filter: Record<string, unknown>) =>
+    MealModel.find({
+      _id: { $ne: excludeId },
       category: slot.category,
-      calories: { $lt: currentMeal.calories },
-    }).sort({ calories: -1 });
-  } else {
-    // Strict: use exact stored range
-    candidates = await MealModel.find({
-      _id: { $ne: new Types.ObjectId(currentMealId) },
-      category: slot.category,
-      calories: { $gte: slotMin, $lte: slotMax },
+      ...filter,
     });
 
-    // Allow ±10% rounding tolerance only
-    if (!candidates.length) {
-      candidates = await MealModel.find({
-        _id: { $ne: new Types.ObjectId(currentMealId) },
-        category: slot.category,
-        calories: { $gte: Math.floor(slotMin * 0.9), $lte: Math.ceil(slotMax * 1.1) },
-      });
-    }
+  const around = (pct: number, minAbs: number) => {
+    const delta = Math.max(Math.round(currentCalories * pct), minAbs);
+    return { $gte: currentCalories - delta, $lte: currentCalories + delta };
+  };
+
+  let candidates = await findInSlot({ calorieRange: sameRange });
+
+  if (!candidates.length) {
+    candidates = await findInSlot({ calories: around(0.1, 50) });
+  }
+
+  if (!candidates.length) {
+    candidates = await findInSlot({ calories: around(0.15, 80) });
   }
 
   if (!candidates.length) {
     throw new AppError(
       StatusCodes.NOT_FOUND,
-      fewerCaloriesOnly || plan.isOverBudget
-        ? 'Nessuna alternativa con meno calorie trovata per questo pasto.'
-        : `Nessun altro pasto trovato nel range ${slotMin}–${slotMax} kcal per "${slot.slot}". Aggiungi più pasti in questo range dal pannello admin.`
+      `Nessun altro pasto trovato per "${slot.slot}" con calorie simili. Aggiungi più pasti in questa categoria dal pannello admin.`
     );
   }
 

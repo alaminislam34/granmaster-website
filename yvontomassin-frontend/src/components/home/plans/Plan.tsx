@@ -97,31 +97,18 @@ function PlanContent() {
     if (!plan) return;
     const slot = plan.slots[slotIndex];
     if (!slot.meal) return;
-    const oldCalories = slot.meal.calories;
     setSwapping(slotIndex);
     try {
       const res = await baseApi.post(ENDPOINTS.mealPlannerVariante, {
         planId: plan._id,
         slotIndex,
         currentMealId: slot.meal._id,
-        fewerCaloriesOnly: true,
       });
       const updatedPlan = res.data?.data?.plan ?? res.data?.data ?? null;
 
       if (updatedPlan) {
-        const newMeal   = updatedPlan.slots[slotIndex]?.meal as MealInSlot | null;
         setPlan(updatedPlan);
-
-        if (newMeal) {
-          const diff = newMeal.calories - oldCalories;
-          if (diff < 0) {
-            toast.success(`Pasto cambiato! ${Math.abs(diff)} kcal in meno.`);
-          } else {
-            toast.success("Pasto cambiato con successo!");
-          }
-        } else {
-          toast.success("Pasto cambiato con successo!");
-        }
+        toast.success("Pasto cambiato con successo!");
       }
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
@@ -214,9 +201,9 @@ function PlanContent() {
       })),
       instructions: includeStrategy
         ? [
-            "Usa VARIANTE per scegliere pasti con meno calorie, senza altri filtri.",
-            "Usa ELIMINA QUESTO PASTO se vuoi ridurre ulteriormente il totale giornaliero.",
-            "Aggiungi lo sgarro con AGGIUNGI LO SGARRO solo dopo aver bilanciato la giornata.",
+            "Usa VARIANTE per sostituire un pasto con un altro della stessa categoria e calorie simili.",
+            "Usa ELIMINA QUESTO PASTO se vuoi togliere quel pasto dalla giornata.",
+            "Aggiungi uno sgarro con AGGIUNGI LO SGARRO — è l’unica eccezione al piano.",
           ]
         : [],
     };
