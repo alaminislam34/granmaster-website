@@ -283,9 +283,9 @@ export default function Dashboard() {
                     <Icon className="text-base" />
                   </span>
                 </div>
-                <p className="mt-3 text-[32px] font-semibold leading-none text-slate-900">
-                  {loading ? <Bone className="inline-block h-7 w-10" /> : s.value}
-                </p>
+                <div className="mt-3 text-[32px] font-semibold leading-none text-slate-900">
+                  {loading ? <Bone className="h-7 w-10" /> : s.value}
+                </div>
               </div>
             );
           })}
