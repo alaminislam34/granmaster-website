@@ -47,16 +47,20 @@ const createPlanAndFillValidation = z.object({
       .refine((v) => [3, 4, 5, 6].includes(v), {
         message: 'mealCount must be 3, 4, 5 or 6',
       }),
-    calorieGoal: z
-      .number({ message: 'calorieGoal is required' })
-      .min(1, 'calorieGoal must be positive'),
+    calorieGoal: z.number().min(1).optional(),
     proteinGoal: z.number().min(0).default(0),
     carbohydratesGoal: z.number().min(0).default(0),
     fatGoal: z.number().min(0).default(0),
     slotCalorieRanges: z
       .array(z.object({ min: z.number().min(0), max: z.number().min(0) }))
-      .min(3, 'slotCalorieRanges must have at least 3 entries')
-      .max(6, 'slotCalorieRanges must have at most 6 entries'),
+      .min(3)
+      .max(6)
+      .optional(),
+    slotPortions: z
+      .array(z.enum(['Small', 'Medium', 'Large']))
+      .min(3)
+      .max(6)
+      .optional(),
     date: z.string().optional(), // ISO date; defaults to today
     // Optional extras — omitted by old clients, so live generate stays the same
     quickMealsOnly: z.boolean().optional(),
@@ -69,7 +73,21 @@ const createPlanAndFillValidation = z.object({
     slotFatRanges: z
       .array(z.object({ min: z.number().min(0), max: z.number().min(0) }))
       .optional(),
-  }),
+  })
+    .refine(
+      (data) =>
+        data.slotPortions?.length === data.mealCount ||
+        data.slotCalorieRanges?.length === data.mealCount,
+      {
+        message: 'Provide slotPortions or slotCalorieRanges matching mealCount',
+      }
+    )
+    .refine(
+      (data) =>
+        Boolean(data.slotPortions?.length) ||
+        (data.calorieGoal != null && data.calorieGoal >= 1),
+      { message: 'calorieGoal is required when slotPortions is not used' }
+    ),
 });
 
 // ─── Variante (meal swap) ─────────────────────────────────────────────────────

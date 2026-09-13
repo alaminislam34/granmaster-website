@@ -1,7 +1,6 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { FiRefreshCw, FiTool, FiX } from "react-icons/fi";
 import baseApi from "@/src/api/baseApi";
@@ -9,6 +8,7 @@ import { ENDPOINTS } from "@/src/api/endPoints";
 import { getCurrentUser } from "@/src/lib/authService";
 import { toast } from "sonner";
 import Cheat from "./Cheat";
+import EmptyPlan from "./EmptyPlan";
 import PlanSkeleton from "./PlanSkeleton";
 import { getImageUrl } from "@/src/lib/imageUrl";
 import SquareMealImage from "@/src/components/Shared/SquareMealImage";
@@ -248,28 +248,7 @@ function PlanContent() {
   }
 
   if (error || !plan) {
-    return (
-      <div className="flex items-center justify-center min-h-[40vh] px-4">
-        <div className="rounded-2xl bg-white p-8 text-center shadow-md max-w-md w-full">
-          {error ? (
-            <p className="text-red-500 font-medium">{error}</p>
-          ) : (
-            <>
-              <div className="text-4xl mb-4">🍽️</div>
-<p className="text-gray-600 font-medium">
-  Nessun piano trovato.
-</p>
-<p className="mt-1 text-sm text-gray-400">
-  Torna alla home page e crea un piano.
-</p>
-            </>
-          )}
-          <Link href="/" className="mt-6 inline-block rounded-lg bg-[#8F00FF] px-6 py-2 text-sm font-semibold text-white hover:bg-[#7A00E5]">
-            Torna alla home
-          </Link>
-        </div>
-      </div>
-    );
+    return <EmptyPlan error={error || undefined} />;
   }
 
   const totalCal = plan.dailyTotalCalories;

@@ -71,12 +71,13 @@ export default function Header() {
 
   return (
     <header className="bg-white shadow-sm">
-      <div className="mx-auto flex lg:max-w-7xl items-center justify-between px-6 py-4">
-        <Link
-          href="/"
-          className="text-2xl font-semibold tracking-wide text-[#8F00FF] sm:text-3xl"
-        >
-          GUIDA NUTRIZIONALE GRANMASTER
+      <div className="mx-auto flex lg:max-w-7xl items-center justify-between px-6 py-3">
+        <Link href="/" aria-label="GranMaster Nutritional Guide" className="shrink-0">
+          <img
+            src="/brand/logo.png"
+            alt="GranMaster Nutritional Guide"
+            className="h-10 w-auto sm:h-12"
+          />
         </Link>
 
         {/* Desktop nav */}

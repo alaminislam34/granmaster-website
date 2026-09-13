@@ -8,6 +8,7 @@ import cheatRouter from '../app/modules/cheat/cheat.route';
 import mealPlannerRouter from '../app/modules/mealplanner/mealplanner.route';
 import imageRouter from '../app/modules/image/image.route';
 import savedRouter from '../app/modules/saved/saved.route';
+import portionFilterRouter from '../app/modules/portionFilter/portionFilter.route';
 
 const router = Router();
 
@@ -47,6 +48,10 @@ const moduleRoutes = [
   {
     path: '/saved',
     route: savedRouter,
+  },
+  {
+    path: '/portionFilters',
+    route: portionFilterRouter,
   },
 ];
 

@@ -5,6 +5,8 @@ import { IMeal } from './mealplanner.interface';
 import { MealModel } from './meal.model';
 import { MealPlanModel } from './mealplan.model';
 import { CheatModel } from '../cheat/cheat.model';
+import { portionFilterService } from '../portionFilter/portionFilter.service';
+import { PortionSize } from '../portionFilter/portionFilter.constant';
 import { s3Service } from '../../services/s3.service';
 import {
   CALORIE_TOLERANCE_MULTIPLIER,
@@ -243,11 +245,12 @@ const getMealsByCalorieRange = async (calorieRange: CalorieRange) => {
 const createPlanAndFill = async (payload: {
   userId: string;
   mealCount: 3 | 4 | 5 | 6;
-  calorieGoal: number;
+  calorieGoal?: number;
   proteinGoal: number;
   carbohydratesGoal: number;
   fatGoal: number;
-  slotCalorieRanges: { min: number; max: number }[];
+  slotCalorieRanges?: { min: number; max: number }[];
+  slotPortions?: PortionSize[];
   date?: string;
   quickMealsOnly?: boolean;
   slotProteinRanges?: MacroRange[];
@@ -257,11 +260,9 @@ const createPlanAndFill = async (payload: {
   const {
     userId,
     mealCount,
-    calorieGoal,
     proteinGoal,
     carbohydratesGoal,
     fatGoal,
-    slotCalorieRanges,
     date,
     quickMealsOnly,
     slotProteinRanges,
@@ -271,12 +272,33 @@ const createPlanAndFill = async (payload: {
 
   const structure = MEAL_STRUCTURES[mealCount];
 
-  if (slotCalorieRanges.length !== structure.length) {
+  let slotCalorieRanges = payload.slotCalorieRanges;
+  if (payload.slotPortions?.length === structure.length) {
+    slotCalorieRanges = [];
+    for (let i = 0; i < structure.length; i++) {
+      slotCalorieRanges.push(
+        await portionFilterService.resolvePortionRange(
+          structure[i].category,
+          payload.slotPortions[i]
+        )
+      );
+    }
+  }
+
+  if (!slotCalorieRanges || slotCalorieRanges.length !== structure.length) {
     throw new AppError(
       StatusCodes.BAD_REQUEST,
       `slotCalorieRanges must have exactly ${structure.length} entries for a ${mealCount}-meal plan`
     );
   }
+
+  const calorieGoal =
+    payload.calorieGoal && payload.calorieGoal > 0
+      ? payload.calorieGoal
+      : slotCalorieRanges.reduce(
+          (sum, range) => sum + Math.round((range.min + range.max) / 2),
+          0
+        );
 
   const planDate = date ? new Date(date) : new Date();
   planDate.setUTCHours(0, 0, 0, 0);
@@ -300,11 +322,22 @@ const createPlanAndFill = async (payload: {
     const meal = await pickRandomMealForCalories(category, min, max, undefined, extra);
 
     if (!meal) {
+      const portionIt =
+        payload.slotPortions?.[i] === 'Small'
+          ? 'Piccola'
+          : payload.slotPortions?.[i] === 'Large'
+            ? 'Grande'
+            : payload.slotPortions?.[i] === 'Medium'
+              ? 'Media'
+              : null;
+      const rangeLabel = portionIt
+        ? ` (${portionIt}, ${min}–${max} kcal)`
+        : ` nel range ${min}–${max} kcal`;
       throw new AppError(
         StatusCodes.BAD_REQUEST,
         quickMealsOnly
-          ? `Nessun pasto veloce trovato per "${slot}" nel range ${min}–${max} kcal.`
-          : `Nessun pasto trovato per "${slot}" nel range ${min}–${max} kcal. Aggiungi pasti nel range corretto o modifica le impostazioni.`
+          ? `Nessun pasto veloce trovato per "${slot}"${rangeLabel}.`
+          : `Nessun pasto trovato per "${slot}"${rangeLabel}. Aggiungi pasti in questo range dal pannello admin o modifica i filtri porzione.`
       );
     }
 

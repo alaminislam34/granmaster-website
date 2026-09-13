@@ -8,6 +8,7 @@ import {
   PiSquaresFourBold,
   PiForkKnifeBold,
   PiWarningDiamondBold,
+  PiSliders,
   PiGearBold,
 } from 'react-icons/pi';
 import { getCurrentUser, logout } from '@/src/lib/authService';
@@ -18,6 +19,7 @@ const navItems = [
   { label: 'Pannello di controllo', href: '/admin/dashboard', icon: PiSquaresFourBold },
   { label: 'Piani nutrizionali', href: '/admin/nutrition', icon: PiForkKnifeBold },
   { label: 'Catalogo sgarro', href: '/admin/cheatMeals', icon: PiWarningDiamondBold },
+  { label: 'Filtri porzione', href: '/admin/portionFilters', icon: PiSliders },
   { label: 'Impostazioni', href: '/admin/settings', icon: PiGearBold },
 ];
 
@@ -81,9 +83,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="pb-10">
             <div className="flex items-start justify-between md:block">
               <div>
-                <div className="text-3xl font-bold tracking-tight text-slate-900">
-                  NUTRIZIONALE <span className="text-[#8F00FF]">GRANMASTER</span>
-                </div>
+                <Link href="/" aria-label="GranMaster">
+                  <img src="/brand/logo.png" alt="GranMaster" className="h-10 w-auto" />
+                </Link>
                 <p className="mt-3 text-sm text-slate-500">Portale di gestione</p>
               </div>
               <button

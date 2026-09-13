@@ -5,7 +5,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
-import img1 from '../../assets/image.svg';
 import { register, resendVerificationCode, verifyEmail } from '@/src/lib/authService';
 import { toast } from 'sonner';
 
@@ -192,7 +191,9 @@ export default function Register() {
     <div className="min-h-screen bg-[#f7f6f4] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-lg rounded-2xl bg-white p-10 shadow-xl">
         <div className="flex justify-center">
-          <img src={img1.src} alt="Guida Nutrizionale" className="h-30 w-70" />
+          <Link href="/" aria-label="Torna alla home" className="inline-flex justify-center">
+            <img src="/brand/logo.png" alt="GranMaster Nutritional Guide" className="h-16 w-auto cursor-pointer sm:h-20" />
+          </Link>
         </div>
 
         <div className="text-center mt-6 mb-6">

@@ -15,10 +15,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GranMaster Nutritional Guide.",
-  description: "Crea il tuo piano nutrizionale personalizzato con Nutrizione Elisir. Scopri i tuoi obiettivi nutrizionali e ricevi consigli alimentari su misura.",
+  title: "GranMaster Nutritional Guide",
+  description: "Crea il tuo piano nutrizionale personalizzato. Scegli i pasti e ricevi un piano su misura.",
+  applicationName: "GranMaster",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
   },
 };
 

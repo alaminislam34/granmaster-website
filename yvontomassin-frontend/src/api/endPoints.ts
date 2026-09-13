@@ -38,6 +38,8 @@ export const ENDPOINTS = {
   mealPlannerUserPlans: '/mealPlanner/plans/user',
   mealPlannerPlanById: '/mealPlanner/plans',
 
+  portionFilters: '/portionFilters',
+
   // Saved days / strategies (server + PDF)
   saved: '/saved',
 };
