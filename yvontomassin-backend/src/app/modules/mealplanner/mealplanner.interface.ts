@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 import { CalorieRange, MealCategory } from './mealplanner.constant';
+import { PortionSize } from '../portionFilter/portionFilter.constant';
 
 // ─── Meal (database item) ─────────────────────────────────────────────────────
 export interface IMeal {
@@ -10,6 +11,7 @@ export interface IMeal {
   carbohydrates: number;
   fat: number;
   calorieRange: CalorieRange;
+  portionType?: PortionSize;
   image?: string;
   description?: string;
   isQuickMeal?: boolean;

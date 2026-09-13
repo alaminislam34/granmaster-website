@@ -27,6 +27,7 @@ async function syncToMealPlanner(
       carbohydrates: data.nutrition?.carbohydrates ?? 0,
       fat: data.nutrition?.fat ?? 0,
       calorieRange: getCalorieRange(calories),
+      portionType: data.portionType ?? 'Medium',
       ...(typeof data.image === 'string' && data.image.trim()
         ? { image: data.image }
         : {}),
@@ -65,6 +66,7 @@ const createNutrition = async (
     name: result.name,
     category: result.category,
     nutrition: result.nutrition,
+    portionType: result.portionType,
     image: result.image,
     description: result.description,
     isQuickMeal: result.isQuickMeal,
@@ -73,8 +75,14 @@ const createNutrition = async (
 };
 
 // ─── Get all ──────────────────────────────────────────────────────────────────
-const getAllNutritions = async () => {
-  return await NutritionModel.find().sort({ createdAt: -1 });
+const getAllNutritions = async (query: Record<string, unknown> = {}) => {
+  const filter: Record<string, unknown> = {};
+  if (query.category) filter.category = query.category;
+  if (query.portionType) filter.portionType = query.portionType;
+  if (query.isQuickMeal === 'true' || query.isQuickMeal === true) {
+    filter.isQuickMeal = true;
+  }
+  return await NutritionModel.find(filter).sort({ createdAt: -1 });
 };
 
 // ─── Get single ───────────────────────────────────────────────────────────────
@@ -118,6 +126,7 @@ const updateNutrition = async (
       name: result.name,
       category: result.category,
       nutrition: result.nutrition,
+      portionType: result.portionType,
       image: result.image,
       description: result.description,
       isQuickMeal: result.isQuickMeal,
@@ -145,13 +154,13 @@ const syncAllNutritionToMealPlanner = async () => {
   const all = await NutritionModel.find();
   let synced = 0;
   let skipped = 0;
-
   for (const n of all) {
     if (!MEAL_PLANNER_CATEGORIES.includes(n.category)) { skipped++; continue; }
     await syncToMealPlanner(n._id.toString(), {
       name: n.name,
       category: n.category,
       nutrition: n.nutrition,
+      portionType: n.portionType,
       image: n.image,
       description: n.description,
       isQuickMeal: n.isQuickMeal,

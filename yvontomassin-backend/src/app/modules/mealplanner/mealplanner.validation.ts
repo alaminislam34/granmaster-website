@@ -19,6 +19,7 @@ const createMealValidation = z.object({
     fat: z.number().min(0).default(0),
     // calorieRange auto-derived from calories if omitted
     calorieRange: z.enum([...CALORIE_RANGES] as [string, ...string[]]).optional(),
+    portionType: z.enum(['Small', 'Medium', 'Large']).optional(),
     isQuickMeal: z.boolean().optional(),
   }),
 });
@@ -32,6 +33,7 @@ const updateMealValidation = z.object({
     carbohydrates: z.number().min(0).optional(),
     fat: z.number().min(0).optional(),
     calorieRange: z.enum([...CALORIE_RANGES] as [string, ...string[]]).optional(),
+    portionType: z.enum(['Small', 'Medium', 'Large']).optional(),
     isQuickMeal: z.boolean().optional(),
   }),
 });

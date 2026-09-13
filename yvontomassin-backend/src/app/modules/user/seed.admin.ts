@@ -24,22 +24,13 @@ export async function seedAdmin() {
       });
       console.log('✅ Admin user seeded: admin@gmail.com / 123456');
     } else {
-      // Admin exists — always re-hash and update password to fix any double-hash issue
-      const freshHash = await bcrypt.hash(
-        adminPassword,
-        Number(config.bcrypt_salt_rounds),
-      );
-      await User.findOneAndUpdate(
-        { email: adminEmail },
-        {
-          password: freshHash,
-          is_admin: true,
-          isVerified: true,
-          status: 'active',
-          needsPasswordChange: false,
-        },
-      );
-      console.log('✅ Admin password reset & is_admin ensured');
+      // Admin exists — ensure is_admin flag without touching user's password
+      if (!existing.is_admin) {
+        await User.findOneAndUpdate(
+          { email: adminEmail },
+          { is_admin: true }
+        );
+      }
     }
   } catch (err) {
     console.error('❌ Admin seed failed:', err);

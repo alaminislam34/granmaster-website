@@ -35,11 +35,32 @@ export default function Cheat({
   }, []);
 
   return (
-    <Modal open onClose={onClose} title="Programma lo sgarro" size="xl">
-      <p className="-mt-2 text-center text-sm text-gray-500">
-        Scegli uno sgarro dal catalogo.
-      </p>
-
+    <Modal
+      open
+      onClose={onClose}
+      title="Programma lo sgarro"
+      subtitle="Scegli uno sgarro dal catalogo."
+      size="xl"
+      footer={
+        <div className="flex flex-col-reverse items-center gap-3 sm:flex-row sm:justify-between">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full sm:w-auto rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+          >
+            Annulla
+          </button>
+          <button
+            type="button"
+            onClick={() => { if (selected) onAdd(selected); }}
+            disabled={!selected}
+            className="w-full sm:w-auto rounded-xl bg-[#8F00FF] px-6 py-2.5 text-xs font-semibold text-white transition hover:bg-[#7A00E5] disabled:bg-slate-200 disabled:opacity-50 shadow-sm"
+          >
+            AGGIUNGI LO SGARRO
+          </button>
+        </div>
+      }
+    >
       {loading ? (
         <CheatPickerSkeleton />
       ) : meals.length === 0 ? (
@@ -47,7 +68,7 @@ export default function Cheat({
           Nessuno sgarro disponibile. Aggiungine uno dal pannello admin.
         </div>
       ) : (
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {meals.map((meal) => {
             const imgSrc = getImageUrl(meal.image);
             return (
@@ -76,22 +97,6 @@ export default function Cheat({
           })}
         </div>
       )}
-
-      <div className="mt-6 flex flex-col-reverse items-center gap-3 sm:flex-row sm:justify-end">
-        <button
-          onClick={onClose}
-          className="w-full rounded-full border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 sm:w-auto"
-        >
-          Annulla
-        </button>
-        <button
-          onClick={() => { if (selected) onAdd(selected); }}
-          disabled={!selected}
-          className="w-full rounded-full bg-[#8F00FF] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#7A00E5] disabled:bg-gray-200 disabled:opacity-50 sm:w-auto"
-        >
-          AGGIUNGI LO SGARRO
-        </button>
-      </div>
     </Modal>
   );
 }

@@ -7,7 +7,7 @@ import multer from 'multer';
 import passport from './app/config/passport.config';
 import config from './app/config';
 import router from './routes';
-import notFound from './middlewares/NotFound';
+import notFound from './middlewares/auth';
 import globalErrorHandler from './middlewares/NotFound';
 
 // express

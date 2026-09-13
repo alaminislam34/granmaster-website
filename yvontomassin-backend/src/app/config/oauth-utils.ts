@@ -1,15 +1,14 @@
 import { User } from '../modules/user/user.model';
 import jwt, { Secret, SignOptions } from 'jsonwebtoken';
-import type { StringValue } from 'ms';
 import config from '.';
 
 export const generateTokens = (userId: string) => {
   const accessSecret = config.jwt.accessSecret ?? '';
   const refreshSecret = config.jwt.refreshSecret ?? '';
   const accessExpiresIn =
-    (config.jwt.accessExpiresIn as StringValue | number | undefined) ?? '15m';
+    (config.jwt.accessExpiresIn as SignOptions['expiresIn']) ?? '15m';
   const refreshExpiresIn =
-    (config.jwt.refreshExpiresIn as StringValue | number | undefined) ?? '30d';
+    (config.jwt.refreshExpiresIn as SignOptions['expiresIn']) ?? '30d';
 
   if (!accessSecret || !refreshSecret) {
     throw new Error('JWT secrets are not configured');

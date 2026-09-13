@@ -563,17 +563,33 @@ export default function Butrition() {
           open
           onClose={closeModal}
           title={editId ? "Modifica pasto" : "Crea un nuovo pasto"}
+          subtitle="Definisci il profilo nutrizionale per il pasto."
           size="lg"
+          footer={
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
+              >
+                <FiX className="text-sm" /> Annulla
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-[#8F00FF] px-8 text-xs font-semibold text-white transition hover:bg-[#7A00E5] sm:w-auto disabled:opacity-60 shadow-sm"
+              >
+                {saving ? "Salvataggio..." : editId ? "Salva modifiche" : "Pubblica pasto"}
+              </button>
+            </div>
+          }
         >
-          <p className="-mt-2 text-[13px] text-slate-500">
-            Definisci il profilo nutrizionale per il pasto.
-          </p>
-
             {formError && (
-              <div className="mt-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600 border border-red-200">{formError}</div>
+              <div className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600 border border-red-200">{formError}</div>
             )}
 
-            <div className="mt-5 space-y-4">
+            <div className="space-y-4">
               {/* Image upload */}
               <div>
                 <label className="mb-2 block text-[12px] font-semibold text-slate-700">Immagine</label>
@@ -581,15 +597,28 @@ export default function Butrition() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white transition hover:bg-slate-50 overflow-hidden"
+                  className="group relative flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 transition hover:bg-slate-100/70 overflow-hidden"
                 >
-                  {imagePreview
-                    ? <SquareMealImage src={imagePreview} alt="preview" className="max-h-64" />
-                    : <div className="flex h-32 w-full flex-col items-center justify-center">
-                        <FiUploadCloud className="text-2xl text-[#8F00FF]" />
-                        <p className="mt-2 text-[13px] font-medium text-slate-700">Carica immagine 1:1</p>
-                        <p className="text-[11px] text-slate-400">Formato quadrato consigliato. JPEG, PNG, WebP</p>
-                      </div>}
+                  {imagePreview ? (
+                    <div className="relative flex h-52 w-full items-center justify-center bg-slate-50 p-2">
+                      <img
+                        src={imagePreview}
+                        alt="preview"
+                        className="h-full max-w-full rounded-xl object-contain"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
+                        <span className="rounded-lg bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-800 shadow">
+                          Cambia immagine
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex h-32 w-full flex-col items-center justify-center">
+                      <FiUploadCloud className="text-2xl text-[#8F00FF]" />
+                      <p className="mt-2 text-[13px] font-medium text-slate-700">Carica immagine</p>
+                      <p className="text-[11px] text-slate-400">JPEG, PNG, WebP</p>
+                    </div>
+                  )}
                 </button>
               </div>
 
@@ -737,19 +766,6 @@ export default function Butrition() {
                 })()}
 
               </div>
-            </div>
-
-            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <button onClick={closeModal} className="inline-flex items-center gap-1 text-[12px] font-semibold text-slate-500 hover:text-slate-700">
-                <FiX className="text-xs" /> Annulla
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-[#8F00FF] px-8 text-[12px] font-semibold text-white transition hover:bg-[#7A00E5] sm:w-auto disabled:opacity-60"
-              >
-                {saving ? "Salvataggio..." : editId ? "Salva modifiche" : "Pubblica pasto"}
-              </button>
             </div>
         </Modal>
       )}

@@ -72,7 +72,21 @@ function ViewModal({ user, onClose }: { user: User; onClose: () => void }) {
   ];
 
   return (
-    <Modal open onClose={onClose} title="Dettagli utente" size="md">
+    <Modal
+      open
+      onClose={onClose}
+      title="Dettagli utente"
+      size="md"
+      footer={
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full rounded-xl bg-slate-100 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition"
+        >
+          Chiudi
+        </button>
+      }
+    >
         <div className="flex items-center gap-4">
           <UserAvatar user={user} size="lg" />
           <div>
@@ -94,13 +108,6 @@ function ViewModal({ user, onClose }: { user: User; onClose: () => void }) {
             </div>
           ))}
         </div>
-
-        <button
-          onClick={onClose}
-          className="mt-5 w-full rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition"
-        >
-          Chiudi
-        </button>
     </Modal>
   );
 }
@@ -164,8 +171,32 @@ function EditModal({
   );
 
   return (
-    <Modal open onClose={onClose} title="Modifica utente" size="md">
-        <form onSubmit={handleSave} className="space-y-3">
+    <Modal
+      open
+      onClose={onClose}
+      title="Modifica utente"
+      size="md"
+      footer={
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl px-5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+          >
+            Annulla
+          </button>
+          <button
+            type="submit"
+            form="edit-user-form"
+            disabled={saving}
+            className="rounded-xl bg-[#8F00FF] px-6 py-2 text-xs font-semibold text-white hover:bg-[#7A00E5] disabled:opacity-60 transition shadow-sm"
+          >
+            {saving ? "Salvataggio..." : "Salva modifiche"}
+          </button>
+        </div>
+      }
+    >
+        <form id="edit-user-form" onSubmit={handleSave} className="space-y-3">
           {field("Nome completo", "name")}
           {field("Telefono",      "phone", "tel")}
           {field("Città",         "city")}
@@ -182,19 +213,6 @@ function EditModal({
               <option value="in-progress">In attesa</option>
               <option value="blocked">Bloccato</option>
             </select>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="rounded-xl px-5 py-2 text-[12px] font-semibold text-slate-600 hover:bg-slate-100 transition">
-              Annulla
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-xl bg-[#8F00FF] px-5 py-2 text-[12px] font-semibold text-white hover:bg-[#7A00E5] disabled:opacity-60 transition"
-            >
-              {saving ? "Salvataggio..." : "Salva modifiche"}
-            </button>
           </div>
         </form>
     </Modal>

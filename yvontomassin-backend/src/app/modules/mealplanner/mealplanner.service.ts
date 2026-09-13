@@ -165,6 +165,7 @@ const getAllMeals = async (query: Record<string, unknown> = {}) => {
   const filter: Record<string, unknown> = {};
   if (query.category) filter.category = query.category;
   if (query.calorieRange) filter.calorieRange = query.calorieRange;
+  if (query.portionType) filter.portionType = query.portionType;
   if (query.isQuickMeal === 'true' || query.isQuickMeal === true) {
     filter.isQuickMeal = true;
   }

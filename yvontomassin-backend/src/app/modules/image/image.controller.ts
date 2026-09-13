@@ -18,7 +18,7 @@ const getImage = catchAsync(async (req: Request, res: Response) => {
   }
 
   res.setHeader('Content-Type', image.contentType || 'application/octet-stream');
-  res.setHeader('Cache-Control', image.cacheControl || 'public, max-age=3600');
+  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
 
   if (image.contentLength !== undefined) {

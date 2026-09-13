@@ -24,6 +24,11 @@ const MealSchema = new Schema<IMealWithRef>(
       enum: CALORIE_RANGES,
       required: true,
     },
+    portionType: {
+      type: String,
+      enum: ['Small', 'Medium', 'Large'],
+      default: 'Medium',
+    },
     image: { type: String, default: null },
     description: { type: String, default: null },
     isQuickMeal: { type: Boolean, default: false },

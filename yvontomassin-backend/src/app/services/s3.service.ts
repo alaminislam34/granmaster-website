@@ -1,5 +1,6 @@
 import path from 'path';
 import { randomUUID } from 'crypto';
+import sharp from 'sharp';
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -102,15 +103,35 @@ const uploadImage = async (
   folder = 'images'
 ): Promise<UploadedS3Image> => {
   const s3Config = getRequiredConfig();
-  const key = buildObjectKey(file, folder);
+
+  let uploadBuffer = file.buffer;
+  let contentType = file.mimetype;
+  let extension = path.extname(file.originalname).toLowerCase() || '.webp';
+
+  try {
+    uploadBuffer = await sharp(file.buffer)
+      .resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 82 })
+      .toBuffer();
+    contentType = 'image/webp';
+    extension = '.webp';
+  } catch (err) {
+    console.warn('Sharp image optimization fallback to raw buffer:', err);
+  }
+
+  const { keyPrefix } = getRequiredConfig();
+  const prefix = keyPrefix ? sanitizeKeyPart(keyPrefix) : '';
+  const safeFolder = sanitizeKeyPart(folder) || 'images';
+  const filename = `${Date.now()}-${randomUUID()}${extension}`;
+  const key = [prefix, safeFolder, filename].filter(Boolean).join('/');
 
   try {
     await getClient().send(
       new PutObjectCommand({
         Bucket: s3Config.bucket,
         Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
+        Body: uploadBuffer,
+        ContentType: contentType,
         CacheControl: 'public, max-age=31536000, immutable',
       })
     );

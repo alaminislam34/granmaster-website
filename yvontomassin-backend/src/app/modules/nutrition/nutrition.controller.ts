@@ -30,8 +30,8 @@ const createNutrition = catchAsync(async (req: Request, res: Response) => {
 });
 
 // GET /api/nutrition
-const getAllNutritions = catchAsync(async (_req: Request, res: Response) => {
-  const result = await nutritionService.getAllNutritions();
+const getAllNutritions = catchAsync(async (req: Request, res: Response) => {
+  const result = await nutritionService.getAllNutritions(req.query as any);
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
