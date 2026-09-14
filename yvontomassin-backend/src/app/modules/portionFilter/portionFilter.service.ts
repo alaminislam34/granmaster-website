@@ -10,6 +10,7 @@ import {
   PortionTable,
 } from './portionFilter.constant';
 import { PortionFilterModel } from './portionFilter.model';
+import { sequentialPortionErrors } from './portionFilter.validation';
 
 const toPlainTable = (table: PortionTable): PortionTable => {
   const plain = {} as PortionTable;
@@ -21,8 +22,8 @@ const toPlainTable = (table: PortionTable): PortionTable => {
       const min = Number(band?.min);
       const max = Number(band?.max);
       plain[category][size] = {
-        min: Number.isFinite(min) ? min : fallback.min,
-        max: Number.isFinite(max) ? max : fallback.max,
+        min: Number.isFinite(min) ? Math.trunc(min) : fallback.min,
+        max: Number.isFinite(max) ? Math.trunc(max) : fallback.max,
       };
     }
   }
@@ -86,17 +87,9 @@ const getPortionFilters = async () => {
 
 const updatePortionFilters = async (table: PortionTable) => {
   const plain = toPlainTable(table);
-
-  for (const category of PORTION_CATEGORIES) {
-    for (const size of PORTION_SIZES) {
-      const band = plain[category][size];
-      if (!Number.isFinite(band.min) || !Number.isFinite(band.max) || band.min > band.max) {
-        throw new AppError(
-          StatusCodes.BAD_REQUEST,
-          `Range non valido per ${category} ${size}`
-        );
-      }
-    }
+  const sequenceErrors = sequentialPortionErrors(plain);
+  if (sequenceErrors.length > 0) {
+    throw new AppError(StatusCodes.BAD_REQUEST, sequenceErrors[0]);
   }
 
   const doc = await PortionFilterModel.findOneAndUpdate(

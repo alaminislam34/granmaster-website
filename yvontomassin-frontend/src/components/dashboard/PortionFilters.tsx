@@ -31,6 +31,39 @@ const EMPTY: Table = {
   Dinner: { Small: { min: 200, max: 400 }, Medium: { min: 401, max: 600 }, Large: { min: 601, max: 900 } },
 };
 
+function toInt(value: unknown, fallback: number) {
+  const num = Number(value);
+  return Number.isFinite(num) ? Math.trunc(num) : fallback;
+}
+
+function chainRow(row: Record<Size, Band>): Record<Size, Band> {
+  const small = { ...row.Small };
+  const medium = { ...row.Medium, min: small.max + 1 };
+  const large = { ...row.Large, min: medium.max + 1 };
+  return { Small: small, Medium: medium, Large: large };
+}
+
+function rowErrors(row: Record<Size, Band>): string[] {
+  const { Small, Medium, Large } = row;
+  const errors: string[] = [];
+  if (Small.min > Small.max) {
+    errors.push("Piccola: il minimo deve essere ≤ al massimo.");
+  }
+  if (Medium.min !== Small.max + 1) {
+    errors.push(`Media deve iniziare da ${Small.max + 1} kcal (Piccola max + 1).`);
+  }
+  if (Medium.min > Medium.max) {
+    errors.push("Media: il minimo deve essere ≤ al massimo.");
+  }
+  if (Large.min !== Medium.max + 1) {
+    errors.push(`Grande deve iniziare da ${Medium.max + 1} kcal (Media max + 1).`);
+  }
+  if (Large.min > Large.max) {
+    errors.push("Grande: il minimo deve essere ≤ al massimo.");
+  }
+  return errors;
+}
+
 function normalizeTable(data: unknown): Table {
   const src = (data ?? {}) as Partial<Table>;
   const next: Table = {
@@ -41,17 +74,16 @@ function normalizeTable(data: unknown): Table {
   };
 
   for (const { key } of CATEGORIES) {
-    next[key] = { ...EMPTY[key] };
+    const row: Record<Size, Band> = { ...EMPTY[key] };
     for (const { key: size } of SIZES) {
       const band = src[key]?.[size];
-      const min = Number(band?.min);
-      const max = Number(band?.max);
-      next[key][size] = {
-        min: Number.isFinite(min) ? min : EMPTY[key][size].min,
-        max: Number.isFinite(max) ? max : EMPTY[key][size].max,
+      row[size] = {
+        min: toInt(band?.min, EMPTY[key][size].min),
+        max: toInt(band?.max, EMPTY[key][size].max),
         mealCount: Number.isFinite(Number(band?.mealCount)) ? Number(band?.mealCount) : 0,
       };
     }
+    next[key] = chainRow(row);
   }
 
   return next;
@@ -77,17 +109,30 @@ export default function PortionFilters() {
   useEffect(() => { fetchTable(); }, [fetchTable]);
 
   function setBand(category: Category, size: Size, field: "min" | "max", value: string) {
-    const num = Number(value);
+    const lockedMin = (size === "Medium" || size === "Large") && field === "min";
+    if (lockedMin) return;
+
+    const num = toInt(value, 0);
     setTable((prev) => ({
       ...prev,
-      [category]: {
+      [category]: chainRow({
         ...prev[category],
-        [size]: { ...prev[category][size], [field]: Number.isFinite(num) ? num : 0 },
-      },
+        [size]: { ...prev[category][size], [field]: num },
+      }),
     }));
   }
 
+  const invalidRows = Object.fromEntries(
+    CATEGORIES.map(({ key }) => [key, rowErrors(table[key])])
+  ) as Record<Category, string[]>;
+  const hasErrors = CATEGORIES.some(({ key }) => invalidRows[key].length > 0);
+
   async function handleSave() {
+    if (hasErrors) {
+      toast.error("Correggi i range prima di salvare: Media = Piccola max + 1, Grande = Media max + 1.");
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = {
@@ -107,8 +152,14 @@ export default function PortionFilters() {
       if (res.data?.data) setTable(normalizeTable(res.data.data));
       toast.success("Filtri porzione salvati.");
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      toast.error(e?.response?.data?.message || "Salvataggio fallito.");
+      const e = err as {
+        response?: { data?: { message?: string; errorSources?: { message?: string }[] } };
+      };
+      toast.error(
+        e?.response?.data?.errorSources?.[0]?.message ||
+          e?.response?.data?.message ||
+          "Salvataggio fallito."
+      );
     } finally {
       setSaving(false);
     }
@@ -120,7 +171,8 @@ export default function PortionFilters() {
         <h1 className="text-2xl font-semibold text-slate-900">Filtri porzione</h1>
         <p className="mt-2 max-w-2xl text-sm text-slate-500">
           L’utente sceglie solo Piccola, Media o Grande. Qui decidi quante calorie corrisponde ogni misura.
-          Il numero in viola indica quanti pasti del catalogo cadono in quel range.
+          I range sono consecutivi e non si sovrappongono: se Piccola è 200–300, Media inizia da 301;
+          se Media è 301–400, Grande inizia da 401. Il numero in viola indica quanti pasti del catalogo cadono in quel range.
         </p>
       </div>
 
@@ -135,19 +187,29 @@ export default function PortionFilters() {
         {loading ? (
           <div className="px-4 py-12 text-center text-sm text-slate-400">Caricamento...</div>
         ) : (
-          CATEGORIES.map(({ key, label }, idx) => (
+          CATEGORIES.map(({ key, label }, idx) => {
+            const errors = invalidRows[key];
+            const invalid = errors.length > 0;
+            return (
             <div
               key={key}
-              className={`grid grid-cols-[140px_1fr_1fr_1fr] items-center gap-3 px-4 py-4 ${
+              className={`px-4 py-4 ${
                 idx < CATEGORIES.length - 1 ? "border-b border-slate-100" : ""
               }`}
             >
+              <div className="grid grid-cols-[140px_1fr_1fr_1fr] items-center gap-3">
               <div className="text-sm font-semibold text-slate-800">{label}</div>
               {SIZES.map((s) => {
                 const band = table[key][s.key];
                 const empty = (band.mealCount ?? 0) === 0;
+                const minLocked = s.key === "Medium" || s.key === "Large";
                 return (
-                  <div key={s.key} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div
+                    key={s.key}
+                    className={`rounded-xl border bg-slate-50 p-3 ${
+                      invalid ? "border-rose-200" : "border-slate-200"
+                    }`}
+                  >
                     <div className="mb-2 flex items-center justify-between">
                       <span className="text-[11px] font-semibold text-slate-500">{s.label}</span>
                       <span className={`text-[11px] font-bold ${empty ? "text-amber-600" : "text-[#8F00FF]"}`}>
@@ -158,25 +220,44 @@ export default function PortionFilters() {
                       <input
                         type="number"
                         min={0}
+                        step={1}
+                        readOnly={minLocked}
+                        title={minLocked ? "Impostato automaticamente: max precedente + 1" : undefined}
                         value={Number.isFinite(band.min) ? band.min : ""}
                         onChange={(e) => setBand(key, s.key, "min", e.target.value)}
-                        className="h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-center text-sm font-semibold text-slate-800 outline-none focus:border-[#8F00FF]"
+                        className={`h-10 w-full rounded-lg border px-2 text-center text-sm font-semibold outline-none ${
+                          minLocked
+                            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-600"
+                            : "border-slate-200 bg-white text-slate-800 focus:border-[#8F00FF]"
+                        }`}
                       />
                       <span className="text-xs text-slate-400">–</span>
                       <input
                         type="number"
                         min={0}
+                        step={1}
                         value={Number.isFinite(band.max) ? band.max : ""}
                         onChange={(e) => setBand(key, s.key, "max", e.target.value)}
                         className="h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-center text-sm font-semibold text-slate-800 outline-none focus:border-[#8F00FF]"
                       />
                     </div>
-                    <p className="mt-1.5 text-center text-[10px] text-slate-400">kcal</p>
+                    <p className="mt-1.5 text-center text-[10px] text-slate-400">
+                      {minLocked ? "min auto · kcal" : "kcal"}
+                    </p>
                   </div>
                 );
               })}
+              </div>
+              {invalid && (
+                <ul className="mt-2 ml-[140px] space-y-0.5 text-xs text-rose-600">
+                  {errors.map((err) => (
+                    <li key={err}>{err}</li>
+                  ))}
+                </ul>
+              )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -184,7 +265,7 @@ export default function PortionFilters() {
         <button
           type="button"
           onClick={handleSave}
-          disabled={saving || loading}
+          disabled={saving || loading || hasErrors}
           className="inline-flex items-center gap-2 rounded-xl bg-[#8F00FF] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#7A00E5] disabled:opacity-60"
         >
           <FiSave />

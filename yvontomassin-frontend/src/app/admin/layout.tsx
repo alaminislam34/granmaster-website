@@ -77,7 +77,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* ── Sidebar ── */}
         <aside
-          className={`fixed inset-y-0 left-0 z-40 w-70 transform flex-col overflow-hidden border-r border-slate-200 bg-white px-6 py-8 transition-transform duration-300 md:sticky md:top-0 md:z-auto md:flex md:h-screen md:translate-x-0 ${isMobileMenuOpen ? 'flex translate-x-0' : 'hidden -translate-x-full'
+          className={`fixed inset-y-0 left-0 z-40 w-70 transform flex-col overflow-hidden bg-white px-6 py-8 transition-transform duration-300 md:sticky md:top-0 md:z-auto md:flex md:h-screen md:translate-x-0 ${isMobileMenuOpen ? 'flex translate-x-0' : 'hidden -translate-x-full'
             }`}
         >
           <div className="pb-10">
@@ -134,7 +134,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* ── Main content ── */}
         <main className="flex min-h-screen flex-col">
           {/* Top header */}
-          <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-4">
+          <header className="sticky top-0 z-10 bg-white px-4 py-4">
             <div className="flex items-center justify-between ">
               {/* Left side actions */}
               <div className="flex items-center  justify-between">
