@@ -36,25 +36,22 @@ function toInt(value: unknown, fallback: number) {
   return Number.isFinite(num) ? Math.trunc(num) : fallback;
 }
 
-function chainRow(row: Record<Size, Band>): Record<Size, Band> {
-  const small = { ...row.Small };
-  const medium = { ...row.Medium, min: small.max + 1 };
-  const large = { ...row.Large, min: medium.max + 1 };
-  return { Small: small, Medium: medium, Large: large };
-}
-
-function rowErrors(row: Record<Size, Band>): string[] {
+function sizeErrors(row: Record<Size, Band>, size: Size): string[] {
   const { Small, Medium, Large } = row;
+  if (size === "Small") {
+    return Small.min > Small.max ? ["Piccola: il minimo deve essere ≤ al massimo."] : [];
+  }
+  if (size === "Medium") {
+    const errors: string[] = [];
+    if (Medium.min !== Small.max + 1) {
+      errors.push(`Media deve iniziare da ${Small.max + 1} kcal (Piccola max + 1).`);
+    }
+    if (Medium.min > Medium.max) {
+      errors.push("Media: il minimo deve essere ≤ al massimo.");
+    }
+    return errors;
+  }
   const errors: string[] = [];
-  if (Small.min > Small.max) {
-    errors.push("Piccola: il minimo deve essere ≤ al massimo.");
-  }
-  if (Medium.min !== Small.max + 1) {
-    errors.push(`Media deve iniziare da ${Small.max + 1} kcal (Piccola max + 1).`);
-  }
-  if (Medium.min > Medium.max) {
-    errors.push("Media: il minimo deve essere ≤ al massimo.");
-  }
   if (Large.min !== Medium.max + 1) {
     errors.push(`Grande deve iniziare da ${Medium.max + 1} kcal (Media max + 1).`);
   }
@@ -62,6 +59,10 @@ function rowErrors(row: Record<Size, Band>): string[] {
     errors.push("Grande: il minimo deve essere ≤ al massimo.");
   }
   return errors;
+}
+
+function rowErrors(row: Record<Size, Band>): string[] {
+  return SIZES.flatMap(({ key }) => sizeErrors(row, key));
 }
 
 function normalizeTable(data: unknown): Table {
@@ -74,16 +75,15 @@ function normalizeTable(data: unknown): Table {
   };
 
   for (const { key } of CATEGORIES) {
-    const row: Record<Size, Band> = { ...EMPTY[key] };
+    next[key] = { ...EMPTY[key] };
     for (const { key: size } of SIZES) {
       const band = src[key]?.[size];
-      row[size] = {
+      next[key][size] = {
         min: toInt(band?.min, EMPTY[key][size].min),
         max: toInt(band?.max, EMPTY[key][size].max),
         mealCount: Number.isFinite(Number(band?.mealCount)) ? Number(band?.mealCount) : 0,
       };
     }
-    next[key] = chainRow(row);
   }
 
   return next;
@@ -109,16 +109,13 @@ export default function PortionFilters() {
   useEffect(() => { fetchTable(); }, [fetchTable]);
 
   function setBand(category: Category, size: Size, field: "min" | "max", value: string) {
-    const lockedMin = (size === "Medium" || size === "Large") && field === "min";
-    if (lockedMin) return;
-
     const num = toInt(value, 0);
     setTable((prev) => ({
       ...prev,
-      [category]: chainRow({
+      [category]: {
         ...prev[category],
         [size]: { ...prev[category][size], [field]: num },
-      }),
+      },
     }));
   }
 
@@ -202,12 +199,12 @@ export default function PortionFilters() {
               {SIZES.map((s) => {
                 const band = table[key][s.key];
                 const empty = (band.mealCount ?? 0) === 0;
-                const minLocked = s.key === "Medium" || s.key === "Large";
+                const bandInvalid = sizeErrors(table[key], s.key).length > 0;
                 return (
                   <div
                     key={s.key}
                     className={`rounded-xl border bg-slate-50 p-3 ${
-                      invalid ? "border-rose-200" : "border-slate-200"
+                      bandInvalid ? "border-rose-300" : "border-slate-200"
                     }`}
                   >
                     <div className="mb-2 flex items-center justify-between">
@@ -221,14 +218,10 @@ export default function PortionFilters() {
                         type="number"
                         min={0}
                         step={1}
-                        readOnly={minLocked}
-                        title={minLocked ? "Impostato automaticamente: max precedente + 1" : undefined}
                         value={Number.isFinite(band.min) ? band.min : ""}
                         onChange={(e) => setBand(key, s.key, "min", e.target.value)}
-                        className={`h-10 w-full rounded-lg border px-2 text-center text-sm font-semibold outline-none ${
-                          minLocked
-                            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-600"
-                            : "border-slate-200 bg-white text-slate-800 focus:border-[#8F00FF]"
+                        className={`h-10 w-full rounded-lg border bg-white px-2 text-center text-sm font-semibold text-slate-800 outline-none focus:border-[#8F00FF] ${
+                          bandInvalid ? "border-rose-300" : "border-slate-200"
                         }`}
                       />
                       <span className="text-xs text-slate-400">–</span>
@@ -238,12 +231,12 @@ export default function PortionFilters() {
                         step={1}
                         value={Number.isFinite(band.max) ? band.max : ""}
                         onChange={(e) => setBand(key, s.key, "max", e.target.value)}
-                        className="h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-center text-sm font-semibold text-slate-800 outline-none focus:border-[#8F00FF]"
+                        className={`h-10 w-full rounded-lg border bg-white px-2 text-center text-sm font-semibold text-slate-800 outline-none focus:border-[#8F00FF] ${
+                          bandInvalid ? "border-rose-300" : "border-slate-200"
+                        }`}
                       />
                     </div>
-                    <p className="mt-1.5 text-center text-[10px] text-slate-400">
-                      {minLocked ? "min auto · kcal" : "kcal"}
-                    </p>
+                    <p className="mt-1.5 text-center text-[10px] text-slate-400">kcal</p>
                   </div>
                 );
               })}
