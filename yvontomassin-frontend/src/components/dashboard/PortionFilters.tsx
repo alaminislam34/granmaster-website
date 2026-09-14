@@ -31,6 +31,32 @@ const EMPTY: Table = {
   Dinner: { Small: { min: 200, max: 400 }, Medium: { min: 401, max: 600 }, Large: { min: 601, max: 900 } },
 };
 
+function normalizeTable(data: unknown): Table {
+  const src = (data ?? {}) as Partial<Table>;
+  const next: Table = {
+    Breakfast: { ...EMPTY.Breakfast },
+    Snack: { ...EMPTY.Snack },
+    Lunch: { ...EMPTY.Lunch },
+    Dinner: { ...EMPTY.Dinner },
+  };
+
+  for (const { key } of CATEGORIES) {
+    next[key] = { ...EMPTY[key] };
+    for (const { key: size } of SIZES) {
+      const band = src[key]?.[size];
+      const min = Number(band?.min);
+      const max = Number(band?.max);
+      next[key][size] = {
+        min: Number.isFinite(min) ? min : EMPTY[key][size].min,
+        max: Number.isFinite(max) ? max : EMPTY[key][size].max,
+        mealCount: Number.isFinite(Number(band?.mealCount)) ? Number(band?.mealCount) : 0,
+      };
+    }
+  }
+
+  return next;
+}
+
 export default function PortionFilters() {
   const [table, setTable] = useState<Table>(EMPTY);
   const [loading, setLoading] = useState(true);
@@ -40,7 +66,7 @@ export default function PortionFilters() {
     setLoading(true);
     try {
       const res = await baseApi.get(ENDPOINTS.portionFilters);
-      if (res.data?.data) setTable(res.data.data);
+      if (res.data?.data) setTable(normalizeTable(res.data.data));
     } catch {
       toast.error("Impossibile caricare i filtri porzione.");
     } finally {
@@ -78,7 +104,7 @@ export default function PortionFilters() {
         ),
       };
       const res = await baseApi.put(ENDPOINTS.portionFilters, payload);
-      if (res.data?.data) setTable(res.data.data);
+      if (res.data?.data) setTable(normalizeTable(res.data.data));
       toast.success("Filtri porzione salvati.");
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
@@ -132,7 +158,7 @@ export default function PortionFilters() {
                       <input
                         type="number"
                         min={0}
-                        value={band.min}
+                        value={Number.isFinite(band.min) ? band.min : ""}
                         onChange={(e) => setBand(key, s.key, "min", e.target.value)}
                         className="h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-center text-sm font-semibold text-slate-800 outline-none focus:border-[#8F00FF]"
                       />
@@ -140,7 +166,7 @@ export default function PortionFilters() {
                       <input
                         type="number"
                         min={0}
-                        value={band.max}
+                        value={Number.isFinite(band.max) ? band.max : ""}
                         onChange={(e) => setBand(key, s.key, "max", e.target.value)}
                         className="h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-center text-sm font-semibold text-slate-800 outline-none focus:border-[#8F00FF]"
                       />
