@@ -15,7 +15,6 @@ export default function Register() {
   const [step, setStep] = useState<Step>('register');
   const [registeredEmail, setRegisteredEmail] = useState('');
 
-  // Register form
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -28,7 +27,6 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // OTP verify
   const [otpCode, setOtpCode] = useState('');
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyError, setVerifyError] = useState('');
@@ -58,7 +56,6 @@ export default function Register() {
         email: emailToSave,
         password: formData.password,
       });
-      // axios throws on non-2xx — reaching here means success
       setRegisteredEmail(emailToSave);
       toast.success("Registrazione effettuata! Controlla la tua email per il codice.");
       setStep('verify');
@@ -120,7 +117,6 @@ export default function Register() {
     }
   };
 
-  // ─── OTP Step ─────────────────────────────────────────────────────────────
   if (step === 'verify') {
     return (
       <div className="min-h-screen bg-[#f7f6f4] flex items-center justify-center px-4 py-10">
@@ -147,7 +143,6 @@ export default function Register() {
               </div>
             )}
 
-            {/* Single input — supports paste */}
             <div className="mt-6 w-full">
               <input
                 type="text"
@@ -186,7 +181,6 @@ export default function Register() {
     );
   }
 
-  // ─── Register Step ────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#f7f6f4] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-lg rounded-2xl bg-white p-10 shadow-xl">

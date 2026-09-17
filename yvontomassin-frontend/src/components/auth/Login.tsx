@@ -23,7 +23,6 @@ export default function Login() {
     try {
       await login({ email, password });
       toast.success("Accesso effettuato con successo!");
-      // Redirect to home after successful login
       router.push('/');
       router.refresh();
     } catch (err: unknown) {

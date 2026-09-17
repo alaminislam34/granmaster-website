@@ -12,12 +12,10 @@ export default function ForgetPass() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('email');
 
-  // Email step
   const [email, setEmail] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
 
-  // OTP step
   const [otpCode, setOtpCode] = useState('');
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyError, setVerifyError] = useState('');
@@ -74,7 +72,6 @@ export default function ForgetPass() {
     }
   };
 
-  // ─── Step: email ──────────────────────────────────────────────────────────
   if (step === 'email') {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4">
@@ -119,7 +116,6 @@ export default function ForgetPass() {
     );
   }
 
-  // ─── Step: verify OTP ─────────────────────────────────────────────────────
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-4">
       <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-lg">
@@ -140,7 +136,6 @@ export default function ForgetPass() {
             </div>
           )}
 
-          {/* Single input — supports paste */}
           <div className="mt-6 w-full">
             <input
               type="text"

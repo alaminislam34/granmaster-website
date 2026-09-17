@@ -69,13 +69,7 @@ function ResetPassForm() {
   return (
     <div className="min-h-screen  flex items-center justify-center px-4">
       <div className="w-full max-w-lg rounded-2xl bg-white p-10 shadow-xl">
-        {/* Icon */}
-        <div className="flex justify-center mb-6">
-          {/* <div className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#8F00FF]/10 text-[#8F00FF]">
-            <FiEyeOff className="h-7 w-7" />
-          </div> */}
-        </div>
-
+    
         <h2 className="text-center text-2xl font-semibold text-gray-900">
           Reimposta la password
         </h2>
@@ -90,7 +84,6 @@ function ResetPassForm() {
         )}
 
         <div className="mt-6 flex flex-col gap-4">
-          {/* New password */}
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-2">
               Nuova password
@@ -114,7 +107,6 @@ function ResetPassForm() {
             </div>
           </div>
 
-          {/* Confirm password */}
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-2">
               Conferma password

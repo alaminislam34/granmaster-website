@@ -1,13 +1,5 @@
 "use client";
 
-/**
- * ProfileContext
- * ──────────────
- * Stores the current user's profileImage URL and name in React state so
- * that both the public Header and admin dashboard header update immediately
- * when Settings/Profile page saves changes.
- */
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { getImageUrl } from "@/src/lib/imageUrl";
 
@@ -32,7 +24,6 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [profileImage, setProfileImageState] = useState<string | null>(null);
   const [profileName,  setProfileNameState]  = useState<string | null>(null);
 
-  // Hydrate from localStorage on mount
   useEffect(() => {
     const storedImg  = localStorage.getItem(IMG_KEY);
     const storedName = localStorage.getItem(NAME_KEY);

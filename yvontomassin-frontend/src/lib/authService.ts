@@ -23,14 +23,12 @@ export interface AuthUser {
   is_admin?: boolean;
 }
 
-// ─── Register ────────────────────────────────────────────────────────────────
-// Plain axios — no withCredentials, avoids CORS preflight issues
 export async function register(payload: RegisterPayload) {
   const res = await axios.post(
     `${process.env.NEXT_PUBLIC_API_URL}${ENDPOINTS.register}`,
     payload,
   );
-  return res.data; // { success: true, message, data: { email, name, id, role } }
+  return res.data; 
 }
 
 export async function resendVerificationCode(email: string) {
@@ -41,17 +39,15 @@ export async function resendVerificationCode(email: string) {
   return res.data;
 }
 
-// ─── Verify email after registration ─────────────────────────────────────────
 export async function verifyEmail(email: string, code: string) {
   const res = await baseApi.post(ENDPOINTS.verifyEmail, {
     email,
     code,
-    verificationCode: code, // backend accepts either field
+    verificationCode: code, 
   });
   return res.data;
 }
 
-// ─── Login ───────────────────────────────────────────────────────────────────
 export async function login(payload: LoginPayload) {
   const res = await baseApi.post(ENDPOINTS.login, payload);
   const { accessToken } = res.data.data;
@@ -61,25 +57,21 @@ export async function login(payload: LoginPayload) {
   return res.data;
 }
 
-// ─── Forget password — sends code to email ───────────────────────────────────
 export async function forgetPassword(email: string) {
   const res = await baseApi.post(ENDPOINTS.forgetPassword, { email });
   return res.data;
 }
 
-// ─── Verify reset code ───────────────────────────────────────────────────────
 export async function verifyCode(email: string, code: string) {
   const res = await baseApi.post(ENDPOINTS.verifyCode, { email, code });
   return res.data;
 }
 
-// ─── Reset password ──────────────────────────────────────────────────────────
 export async function resetPassword(email: string, code: string, newPassword: string) {
   const res = await baseApi.post(ENDPOINTS.resetPassword, { email, code, newPassword });
   return res.data;
 }
 
-// ─── Decode JWT (client-side, no verify) ────────────────────────────────────
 export function decodeToken(token: string): AuthUser | null {
   try {
     const base64 = token.split('.')[1];
@@ -90,7 +82,6 @@ export function decodeToken(token: string): AuthUser | null {
   }
 }
 
-// ─── Get current user from localStorage ──────────────────────────────────────
 export function getCurrentUser(): AuthUser | null {
   if (typeof window === 'undefined') return null;
   const token = localStorage.getItem('access_token');
@@ -102,13 +93,10 @@ export function getCurrentUser(): AuthUser | null {
   return id ? { ...user, id } : user;
 }
 
-// ─── Logout ───────────────────────────────────────────────────────────────────
 export async function logout() {
   try {
-    // Tell the backend to clear the httpOnly refreshToken cookie
     await baseApi.post(ENDPOINTS.logout, {}, { withCredentials: true });
   } catch {
-    // Ignore — clearing local state is what matters
   }
   if (typeof window !== 'undefined') {
     localStorage.removeItem('access_token');
