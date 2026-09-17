@@ -89,11 +89,11 @@ export const buildSavedPdf = async (saved: ISavedContent & { createdAt?: Date })
       heading: `${SLOT_LABEL[slot.slot] ?? slot.slot}${slot.meal ? ` — ${slot.meal.name}` : ''}`,
       meal: slot.meal,
     })),
-    ...snapshot.cheatMeals.map((cheat) => ({
-      heading: `SGARRO — ${cheat.name}`,
+    ...(snapshot.cheatMeals || []).map((cheat) => ({
+      heading: `SGARRO — ${cheat.name || 'Sgarro'}`,
       meal: {
-        name: cheat.name,
-        calories: cheat.calories,
+        name: cheat.name || 'Sgarro',
+        calories: cheat.calories ?? 0,
         protein: 0,
         carbohydrates: 0,
         fat: 0,

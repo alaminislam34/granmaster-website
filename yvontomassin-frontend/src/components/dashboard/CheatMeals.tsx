@@ -76,10 +76,10 @@ export default function CheatMeals() {
     setForm({
       name: meal.name,
       description: meal.description,
-      calories: String(meal.nutrition.calories),
-      protein: String(meal.nutrition.protein),
-      carbohydrates: String(meal.nutrition.carbohydrates),
-      fat: String(meal.nutrition.fat),
+      calories: String(meal.nutrition?.calories ?? ""),
+      protein: String(meal.nutrition?.protein ?? ""),
+      carbohydrates: String(meal.nutrition?.carbohydrates ?? ""),
+      fat: String(meal.nutrition?.fat ?? ""),
     });
     setImageFile(null);
     setImagePreview(getImageUrl(meal.image) ?? "");
@@ -190,17 +190,17 @@ export default function CheatMeals() {
 
   // ─── Stats ───────────────────────────────────────────────────────────────────
   const avgCal = meals.length
-    ? Math.round(meals.reduce((s, m) => s + m.nutrition.calories, 0) / meals.length)
+    ? Math.round(meals.reduce((s, m) => s + (m.nutrition?.calories ?? 0), 0) / meals.length)
     : 0;
   const topMeal = meals.length
-    ? meals.reduce((best, m) => m.nutrition.calories > best.nutrition.calories ? m : best, meals[0])
+    ? meals.reduce((best, m) => (m.nutrition?.calories ?? 0) > (best.nutrition?.calories ?? 0) ? m : best, meals[0])
     : null;
 
   const cards = [
     { label: "BIBLIOTECA TOTALE", value: String(meals.length), note: "Selezione", helper: "sgarri totali", icon: PiForkKnifeBold, accent: "bg-[#8F00FF]/10 text-[#8F00FF]" },
     { label: "IMPATTO MEDIO", value: String(avgCal), note: "kcal/pasto", helper: "Densità media", icon: PiGaugeBold, accent: "bg-[#8F00FF]/5 text-[#8F00FF]" },
     { label: "SELEZIONE POPOLARE", value: topMeal?.name?.split(" ")[0] ?? "—", note: "", helper: "Più calorico", icon: PiSparkleBold, accent: "bg-[#8F00FF]/10 text-[#8F00FF]" },
-    { label: "CALORIE MAX", value: topMeal ? String(topMeal.nutrition.calories) : "—", note: "kcal", helper: "Premium meal", icon: PiFireBold, accent: "bg-[#8F00FF]/5 text-[#8F00FF]" },
+    { label: "CALORIE MAX", value: topMeal?.nutrition?.calories != null ? String(topMeal.nutrition.calories) : "—", note: "kcal", helper: "Premium meal", icon: PiFireBold, accent: "bg-[#8F00FF]/5 text-[#8F00FF]" },
   ];
 
   // ─── Render ───────────────────────────────────────────────────────────────────
@@ -289,10 +289,10 @@ export default function CheatMeals() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">{meal.nutrition.calories} kcal</td>
-                      <td className="px-4 py-3">{meal.nutrition.protein} g</td>
-                      <td className="px-4 py-3">{meal.nutrition.carbohydrates} g</td>
-                      <td className="px-4 py-3">{meal.nutrition.fat} g</td>
+                      <td className="px-4 py-3">{meal.nutrition?.calories ?? 0} kcal</td>
+                      <td className="px-4 py-3">{meal.nutrition?.protein ?? 0} g</td>
+                      <td className="px-4 py-3">{meal.nutrition?.carbohydrates ?? 0} g</td>
+                      <td className="px-4 py-3">{meal.nutrition?.fat ?? 0} g</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-2 text-slate-500">
                           <button onClick={() => openEdit(meal)} className="rounded-md p-1.5 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Edit">

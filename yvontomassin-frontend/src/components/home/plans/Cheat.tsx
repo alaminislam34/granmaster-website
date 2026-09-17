@@ -86,10 +86,10 @@ export default function Cheat({
                   <div className="text-sm font-semibold text-gray-900">{meal.name}</div>
                   <div className="mt-1 text-xs text-gray-500 line-clamp-2">{meal.description}</div>
                   <div className="mt-2 flex gap-3 text-[11px] text-gray-500">
-                    <span className="font-semibold text-[#8F00FF]">{meal.nutrition.calories} kcal</span>
-                    <span>P: {meal.nutrition.protein}g</span>
-                    <span>C: {meal.nutrition.carbohydrates}g</span>
-                    <span>F: {meal.nutrition.fat}g</span>
+                    <span className="font-semibold text-[#8F00FF]">{meal.nutrition?.calories ?? 0} kcal</span>
+                    <span>P: {meal.nutrition?.protein ?? 0}g</span>
+                    <span>C: {meal.nutrition?.carbohydrates ?? 0}g</span>
+                    <span>F: {meal.nutrition?.fat ?? 0}g</span>
                   </div>
                 </div>
               </button>

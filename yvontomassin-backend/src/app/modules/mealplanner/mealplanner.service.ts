@@ -65,8 +65,8 @@ const recalcPlan = async (planId: Types.ObjectId | string) => {
   }
 
   // Sum cheat meals — calories is a plain stored number (snapshot), not a ref
-  for (const c of plan.cheatMeals) {
-    totalCal += c.calories;
+  for (const c of plan.cheatMeals || []) {
+    totalCal += Number(c.calories) || 0;
   }
 
   const maxAllowed = plan.calorieGoal * CALORIE_TOLERANCE_MULTIPLIER;
@@ -394,7 +394,8 @@ const getMealPlanById = async (planId: string) => {
 const getMealPlansByUser = async (userId: string) => {
   return await MealPlanModel.find({ user: new Types.ObjectId(userId) })
     .sort({ date: -1 })
-    .populate('slots.meal', MEAL_POPULATE_FIELDS);
+    .populate('slots.meal', MEAL_POPULATE_FIELDS)
+    .populate('cheatMeals.cheatMealRef', 'name nutrition image description');
 };
 
 const getTodayPlanForUser = async (userId: string) => {
@@ -500,10 +501,17 @@ const addCheatMeal = async (payload: {
   const cheat = await CheatModel.findById(cheatMealId);
   if (!cheat) throw new AppError(StatusCodes.NOT_FOUND, 'Cheat meal not found');
 
+  if (!plan.cheatMeals) {
+    plan.cheatMeals = [];
+  }
+
   // Bug fix: prevent adding the same cheat meal twice
-  const alreadyAdded = plan.cheatMeals.some(
-    (c: any) => c.cheatMealRef.toString() === cheatMealId
-  );
+  const alreadyAdded = plan.cheatMeals.some((c: any) => {
+    const refId = c?.cheatMealRef?._id
+      ? c.cheatMealRef._id.toString()
+      : c?.cheatMealRef?.toString();
+    return refId === cheatMealId;
+  });
   if (alreadyAdded) {
     throw new AppError(
       StatusCodes.BAD_REQUEST,
@@ -514,7 +522,7 @@ const addCheatMeal = async (payload: {
   plan.cheatMeals.push({
     cheatMealRef: cheat._id as Types.ObjectId,
     name: cheat.name,
-    calories: cheat.nutrition.calories,   // snapshot — not a live ref
+    calories: cheat.nutrition?.calories ?? 0,   // snapshot — not a live ref
   });
 
   await plan.save();
@@ -529,6 +537,10 @@ const removeCheatMeal = async (payload: {
 
   const plan = await MealPlanModel.findById(planId);
   if (!plan) throw new AppError(StatusCodes.NOT_FOUND, 'Meal plan not found');
+
+  if (!plan.cheatMeals) {
+    plan.cheatMeals = [];
+  }
 
   if (cheatMealIndex < 0 || cheatMealIndex >= plan.cheatMeals.length)
     throw new AppError(StatusCodes.BAD_REQUEST, 'Invalid cheat meal index');

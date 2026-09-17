@@ -193,12 +193,15 @@ function PlanContent() {
             }
           : null,
       })),
-      cheatMeals: plan!.cheatMeals.map((cm) => ({
-        name: cm.name,
-        calories: cm.calories,
-        description: cm.cheatMealRef?.description ?? null,
-        image: cm.cheatMealRef?.image ?? null,
-      })),
+      cheatMeals: (plan?.cheatMeals || []).map((cm) => {
+        const ref = typeof cm?.cheatMealRef === "object" ? cm.cheatMealRef : null;
+        return {
+          name: cm?.name || ref?.name || "Sgarro",
+          calories: Number(cm?.calories ?? ref?.nutrition?.calories ?? 0) || 0,
+          description: ref?.description ?? null,
+          image: ref?.image ?? null,
+        };
+      }),
       instructions: includeStrategy
         ? [
             "Usa VARIANTE per sostituire un pasto con un altro della stessa categoria e calorie simili.",
@@ -272,25 +275,27 @@ function PlanContent() {
         )}
 
         {/* Cheat meals added */}
-        {plan.cheatMeals.length > 0 && (
+        {(plan?.cheatMeals?.length ?? 0) > 0 && (
           <div className="mb-6 space-y-3">
             <h4 className="text-sm font-semibold text-gray-700">Sgarri selezionati</h4>
-            {plan.cheatMeals.map((cm, i) => {
-              const ref = cm.cheatMealRef;
+            {plan!.cheatMeals.map((cm, i) => {
+              const ref = typeof cm?.cheatMealRef === "object" ? cm.cheatMealRef : null;
+              const name = cm?.name || ref?.name || "Sgarro";
+              const calories = cm?.calories ?? ref?.nutrition?.calories ?? 0;
               const imgSrc = getImageUrl(ref?.image);
               return (
                 <div key={i} className="rounded-2xl overflow-hidden border border-gray-100 bg-white shadow-sm">
                   <div className="grid grid-cols-1 md:grid-cols-3">
                     <div className="md:col-span-1 bg-gray-50">
-                      <SquareMealImage src={imgSrc} alt={cm.name} fallback="🍔" />
+                      <SquareMealImage src={imgSrc} alt={name} fallback="🍔" />
                     </div>
                     <div className="md:col-span-2 p-6">
                       <div className="text-xs text-gray-400 uppercase">Selezione Gourmet</div>
-                      <h3 className="mt-2 text-xl font-semibold text-gray-900">{cm.name}</h3>
+                      <h3 className="mt-2 text-xl font-semibold text-gray-900">{name}</h3>
                       {ref?.description && <p className="mt-1 text-sm text-gray-500">{ref.description}</p>}
                       <div className="mt-4 grid grid-cols-4 gap-4 text-sm text-gray-600">
                         {[
-                          { v: cm.calories, l: "Calorie" },
+                          { v: calories, l: "Calorie" },
                           { v: ref?.nutrition?.protein ?? 0, l: "Proteina", suffix: "g" },
                           { v: ref?.nutrition?.carbohydrates ?? 0, l: "Carboidrati", suffix: "g" },
                           { v: ref?.nutrition?.fat ?? 0, l: "Grasso", suffix: "g" },
