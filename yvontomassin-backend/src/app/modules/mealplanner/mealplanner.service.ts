@@ -6,9 +6,15 @@ import { MealModel } from './meal.model';
 import { MealPlanModel } from './mealplan.model';
 import { CheatModel } from '../cheat/cheat.model';
 import { portionFilterService } from '../portionFilter/portionFilter.service';
-import { PortionSize } from '../portionFilter/portionFilter.constant';
+import {
+  PORTION_CATEGORIES,
+  PORTION_SIZES,
+  PortionCategory,
+  PortionSize,
+} from '../portionFilter/portionFilter.constant';
 import { s3Service } from '../../services/s3.service';
 import {
+  CALORIE_RANGE_MAP,
   CALORIE_TOLERANCE_MULTIPLIER,
   CalorieRange,
   getCalorieRange,
@@ -28,11 +34,7 @@ const MEAL_POPULATE_FIELDS =
  * Returns the updated + populated plan document.
  */
 const recalcPlan = async (planId: Types.ObjectId | string) => {
-  // Fetch the raw plan (no population needed — calories are stored directly)
-  const plan = await MealPlanModel.findById(planId);
-  if (!plan) throw new AppError(StatusCodes.NOT_FOUND, 'Plan not found');
-
-  // Populate only slots.meal to get calorie numbers
+  // Populate slots.meal directly to get calorie numbers in a single read
   const withMeals = await MealPlanModel.findById(planId).populate<{
     slots: {
       slot: string;
@@ -65,11 +67,11 @@ const recalcPlan = async (planId: Types.ObjectId | string) => {
   }
 
   // Sum cheat meals — calories is a plain stored number (snapshot), not a ref
-  for (const c of plan.cheatMeals || []) {
+  for (const c of withMeals.cheatMeals || []) {
     totalCal += Number(c.calories) || 0;
   }
 
-  const maxAllowed = plan.calorieGoal * CALORIE_TOLERANCE_MULTIPLIER;
+  const maxAllowed = withMeals.calorieGoal * CALORIE_TOLERANCE_MULTIPLIER;
   const isOverBudget = totalCal > maxAllowed;
 
   return await MealPlanModel.findByIdAndUpdate(
@@ -101,36 +103,49 @@ const constraintFromRange = (range?: MacroRange) => {
 
 /**
  * Pick a random meal within an exact calorie range [minCal, maxCal].
- * 1. Exact range + same category
- * 2. Slightly expanded ±10% + same category
- * NO further fallback — returns null if no match found.
+ * Strictly within [minCal, maxCal] + same category (never expands across portion boundaries).
+ * Excludes already-picked meals if alternatives are available.
+ * NO fallback outside [minCal, maxCal] — returns null if no match found.
  */
 const pickRandomMealForCalories = async (
   category: string,
   minCal: number,
   maxCal: number,
-  excludeId?: string,
+  excludeIds?: (string | Types.ObjectId)[],
   extra: Record<string, unknown> = {}
 ) => {
-  const excludeFilter = excludeId ? { $ne: new Types.ObjectId(excludeId) } : undefined;
+  const excludeObjectIds = (excludeIds || [])
+    .filter(Boolean)
+    .map((id) => (typeof id === 'string' ? new Types.ObjectId(id) : id));
 
-  const build = (calorieFilter: Record<string, unknown>) => {
-    const f: Record<string, unknown> = { category, ...extra, ...calorieFilter };
-    if (excludeFilter) f._id = excludeFilter;
-    return f;
+  const baseQuery: Record<string, unknown> = {
+    category,
+    calories: { $gte: minCal, $lte: maxCal },
+    ...extra,
   };
 
-  // 1. Exact range
-  let meals = await MealModel.find(build({ calories: { $gte: minCal, $lte: maxCal } }));
-  if (meals.length) return meals[Math.floor(Math.random() * meals.length)];
+  const projection = '_id name calories protein carbohydrates fat isQuickMeal';
 
-  // 2. Slightly expanded ±10% (to account for rounding)
-  meals = await MealModel.find(build({
-    calories: { $gte: Math.floor(minCal * 0.9), $lte: Math.ceil(maxCal * 1.1) }
-  }));
-  if (meals.length) return meals[Math.floor(Math.random() * meals.length)];
+  // 1. Exact range excluding already picked meals in other slots
+  if (excludeObjectIds.length > 0) {
+    const mealsWithoutExcluded = await MealModel.find({
+      ...baseQuery,
+      _id: { $nin: excludeObjectIds },
+    })
+      .select(projection)
+      .lean();
+    if (mealsWithoutExcluded.length) {
+      return mealsWithoutExcluded[Math.floor(Math.random() * mealsWithoutExcluded.length)];
+    }
+  }
 
-  return null; // No fallback — caller must handle this
+  // 2. Exact range fallback (if all available meals in DB were in exclude list)
+  const meals = await MealModel.find(baseQuery).select(projection).lean();
+  if (meals.length) {
+    return meals[Math.floor(Math.random() * meals.length)];
+  }
+
+  return null; // Strictly no fallback across portion boundaries!
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -306,6 +321,7 @@ const createPlanAndFill = async (payload: {
 
   // Build slots and fill meals using exact calorie ranges
   const slots = [];
+  const pickedMealIds: Types.ObjectId[] = [];
   for (let i = 0; i < structure.length; i++) {
     const { slot, category } = structure[i];
     const { min, max } = slotCalorieRanges[i];
@@ -320,7 +336,7 @@ const createPlanAndFill = async (payload: {
     if (carbQ) extra.carbohydrates = carbQ;
     if (fatQ) extra.fat = fatQ;
 
-    const meal = await pickRandomMealForCalories(category, min, max, undefined, extra);
+    const meal = await pickRandomMealForCalories(category, min, max, pickedMealIds, extra);
 
     if (!meal) {
       const portionIt =
@@ -341,6 +357,8 @@ const createPlanAndFill = async (payload: {
           : `Nessun pasto trovato per "${slot}"${rangeLabel}. Aggiungi pasti in questo range dal pannello admin o modifica i filtri porzione.`
       );
     }
+
+    pickedMealIds.push(meal._id as Types.ObjectId);
 
     slots.push({
       slot,
@@ -419,10 +437,12 @@ const deleteMealPlan = async (planId: string) => {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * VARIANTE always stays on this slot's category (dinner → dinner) and
- * picks a different meal with approximately the same calories.
- * Sgarro is a separate action — never used as a "fewer calories" swap.
- * fewerCaloriesOnly is accepted from older clients and ignored.
+ * VARIANTE (meal swap button):
+ * 1. Strictly stays within the slot's portion filter calorie range [minCal, maxCal].
+ *    Never expands across portion filters!
+ * 2. Excludes meals already selected in other slots of today's plan.
+ * 3. Cycles linearly and progressively forward through available meals:
+ *    Meal 1 -> Meal 2 -> Meal 3 -> ... without random bouncing or repetition.
  */
 const variante = async (payload: {
   planId: string;
@@ -438,51 +458,110 @@ const variante = async (payload: {
   const slot = plan.slots[slotIndex];
   if (!slot) throw new AppError(StatusCodes.BAD_REQUEST, 'Invalid slot index');
 
-  const currentMeal = await MealModel.findById(currentMealId);
-  if (!currentMeal)
-    throw new AppError(StatusCodes.NOT_FOUND, 'Current meal not found');
+  // 1. Determine strict portion calorie bounds [minCal, maxCal]
+  let minCal = slot.targetCaloriesMin;
+  let maxCal = slot.targetCaloriesMax;
 
-  const excludeId = new Types.ObjectId(currentMealId);
-  const currentCalories = currentMeal.calories;
-  const sameRange: CalorieRange =
-    currentMeal.calorieRange || getCalorieRange(currentCalories);
+  if (!minCal || !maxCal || minCal <= 0 || maxCal <= 0) {
+    // Only query currentMeal if needed for legacy plan portion resolution
+    const currentMeal = await MealModel.findById(currentMealId)
+      .select('calories calorieRange')
+      .lean();
+    if (!currentMeal) {
+      throw new AppError(StatusCodes.NOT_FOUND, 'Current meal not found');
+    }
 
-  const findInSlot = (filter: Record<string, unknown>) =>
-    MealModel.find({
-      _id: { $ne: excludeId },
-      category: slot.category,
-      ...filter,
-    });
+    const table = await portionFilterService.getOrCreateTable();
+    const catKey = (PORTION_CATEGORIES.includes(slot.category as PortionCategory)
+      ? slot.category
+      : 'Snack') as PortionCategory;
+    const catBands = table[catKey];
 
-  const around = (pct: number, minAbs: number) => {
-    const delta = Math.max(Math.round(currentCalories * pct), minAbs);
-    return { $gte: currentCalories - delta, $lte: currentCalories + delta };
-  };
+    if (catBands) {
+      for (const size of PORTION_SIZES) {
+        if (
+          currentMeal.calories >= catBands[size].min &&
+          currentMeal.calories <= catBands[size].max
+        ) {
+          minCal = catBands[size].min;
+          maxCal = catBands[size].max;
+          break;
+        }
+      }
+    }
 
-  let candidates = await findInSlot({ calorieRange: sameRange });
-
-  if (!candidates.length) {
-    candidates = await findInSlot({ calories: around(0.1, 50) });
+    if (!minCal || !maxCal || minCal <= 0 || maxCal <= 0) {
+      const cr = currentMeal.calorieRange || getCalorieRange(currentMeal.calories);
+      minCal = CALORIE_RANGE_MAP[cr].min;
+      maxCal = CALORIE_RANGE_MAP[cr].max;
+    }
   }
 
-  if (!candidates.length) {
-    candidates = await findInSlot({ calories: around(0.15, 80) });
-  }
+  // 2. Collect meals used in other slots of this plan to prevent repetitions
+  const otherSlotMealIds = new Set<string>();
+  plan.slots.forEach((s, idx) => {
+    if (idx !== slotIndex && s.meal) {
+      otherSlotMealIds.add(s.meal.toString());
+    }
+  });
+
+  // 3. Find candidate meals with minimal memory footprint (.lean()) and field projection
+  const candidates = await MealModel.find({
+    category: slot.category,
+    calories: { $gte: minCal, $lte: maxCal },
+  })
+    .select('_id name calories protein carbohydrates fat image description isQuickMeal')
+    .sort({ calories: 1, name: 1, _id: 1 })
+    .lean();
 
   if (!candidates.length) {
     throw new AppError(
       StatusCodes.NOT_FOUND,
-      `Nessun altro pasto trovato per "${slot.slot}" con calorie simili. Aggiungi più pasti in questa categoria dal pannello admin.`
+      `Nessun pasto trovato per "${slot.slot}" nella porzione ${minCal}–${maxCal} kcal.`
     );
   }
 
-  const picked = candidates[Math.floor(Math.random() * candidates.length)];
+  // 4. Linear and progressive scrolling
+  const currentIndex = candidates.findIndex(
+    (m) => m._id.toString() === currentMealId
+  );
 
-  plan.slots[slotIndex].meal = picked._id as Types.ObjectId;
+  let nextMeal: (typeof candidates)[number] | null = null;
+
+  // Primary pass: search forward from (currentIndex + 1) for a meal not current and not used in other slots
+  for (let offset = 1; offset <= candidates.length; offset++) {
+    const candidate = candidates[(currentIndex + offset) % candidates.length];
+    const candidateIdStr = candidate._id.toString();
+    if (candidateIdStr !== currentMealId && !otherSlotMealIds.has(candidateIdStr)) {
+      nextMeal = candidate;
+      break;
+    }
+  }
+
+  // Secondary pass: if all candidates are used in other slots of today's plan,
+  // pick the next progressive candidate in the list that is simply not the current meal
+  if (!nextMeal) {
+    for (let offset = 1; offset <= candidates.length; offset++) {
+      const candidate = candidates[(currentIndex + offset) % candidates.length];
+      if (candidate._id.toString() !== currentMealId) {
+        nextMeal = candidate;
+        break;
+      }
+    }
+  }
+
+  if (!nextMeal) {
+    throw new AppError(
+      StatusCodes.NOT_FOUND,
+      `Nessun altro pasto disponibile per "${slot.slot}" in questa porzione (${minCal}–${maxCal} kcal). Aggiungi più pasti dal pannello admin.`
+    );
+  }
+
+  plan.slots[slotIndex].meal = nextMeal._id as Types.ObjectId;
   await plan.save();
 
   const updated = await recalcPlan(plan._id as Types.ObjectId);
-  return { plan: updated, newMeal: picked };
+  return { plan: updated, newMeal: nextMeal };
 };
 
 // ═══════════════════════════════════════════════════════════════════

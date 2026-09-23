@@ -39,6 +39,7 @@ const MealSchema = new Schema<IMealWithRef>(
 
 // Index for fast calorie-range + category lookups (VARIANTE queries)
 MealSchema.index({ calorieRange: 1, category: 1 });
+MealSchema.index({ category: 1, calories: 1, name: 1 });
 MealSchema.index({ category: 1, calories: 1 });
 MealSchema.index({ nutritionRef: 1 }, { sparse: true });
 
