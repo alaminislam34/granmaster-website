@@ -37,14 +37,18 @@ function ResetPassForm() {
     setLoading(true);
     try {
       await resetPassword(email, code, password);
-      toast.success("Password reimpostata con successo!");
+      toast.success("Password reimpostata con successo!", {
+        description: "Ora puoi accedere al tuo account con la nuova password.",
+      });
       setSuccess(true);
       setTimeout(() => router.push('/auth/login'), 2000);
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
       const msg = axiosErr?.response?.data?.message || 'Reimpostazione fallita. Riprova.';
       setError(msg);
-      toast.error(msg);
+      toast.error("Operazione non riuscita", {
+        description: msg,
+      });
     } finally {
       setLoading(false);
     }

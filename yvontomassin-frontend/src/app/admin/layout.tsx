@@ -86,7 +86,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Link href="/" aria-label="GranMaster">
                   <img src="/brand/logo.png" alt="GranMaster" className="h-10 w-auto" />
                 </Link>
-                <p className="mt-3 text-sm text-slate-500">Portale di gestione</p>
               </div>
               <button
                 className="rounded-xl p-2 text-slate-600 transition hover:bg-slate-100 md:hidden"

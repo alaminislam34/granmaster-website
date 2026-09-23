@@ -44,7 +44,7 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
-        <Toaster position="top-right" richColors closeButton />
+        <Toaster position="top-right" closeButton duration={3500} />
       </body>
     </html>
   );

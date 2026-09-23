@@ -22,14 +22,18 @@ export default function Login() {
     setLoading(true);
     try {
       await login({ email, password });
-      toast.success("Accesso effettuato con successo!");
+      toast.success("Accesso effettuato con successo!", {
+        description: "Bentornato su GRANMASTER CUT. Reindirizzamento in corso...",
+      });
       router.push('/');
       router.refresh();
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
       const msg = axiosErr?.response?.data?.message || 'Accesso fallito. Controlla le credenziali.';
       setError(msg);
-      toast.error(msg);
+      toast.error("Accesso non riuscito", {
+        description: msg,
+      });
     } finally {
       setLoading(false);
     }
