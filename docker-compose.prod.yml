@@ -57,7 +57,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://13.49.178.252:5000/api}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://54.145.181.170:5000/api}
     depends_on:
       backend:
         condition: service_healthy

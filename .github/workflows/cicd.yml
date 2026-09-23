@@ -89,7 +89,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL || 'http://52.54.77.164:5000/api' }}
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL || 'http://54.145.181.170:5000/api' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -106,7 +106,7 @@ jobs:
         env:
           APP_ENV_FILE: ${{ secrets.APP_ENV_FILE }}
         with:
-          host: ${{ secrets.EC2_HOST || '52.54.77.164' }}
+          host: ${{ secrets.EC2_HOST || '54.145.181.170' }}
           username: ${{ secrets.EC2_USER || 'ubuntu' }}
           port: ${{ secrets.EC2_PORT || 22 }}
           key: ${{ secrets.EC2_SSH_KEY }}
@@ -118,7 +118,7 @@ jobs:
             BACKEND_IMAGE="ghcr.io/${{ github.repository_owner }}/yvontomassin-backend:latest"
             FRONTEND_IMAGE="ghcr.io/${{ github.repository_owner }}/yvontomassin-frontend:latest"
             ENV_PATH="/home/${{ secrets.EC2_USER || 'ubuntu' }}/yvontomassin-backend/.env"
-            API_URL="${{ secrets.NEXT_PUBLIC_API_URL || 'http://52.54.77.164:5000/api' }}"
+            API_URL="${{ secrets.NEXT_PUBLIC_API_URL || 'http://54.145.181.170:5000/api' }}"
 
             mkdir -p "$(dirname "$ENV_PATH")"
             # YAML indent + comments/blank lines break docker --env-file
