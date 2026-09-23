@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import logo from "../../assets/hero.svg";
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
 import { getCurrentUser } from "@/src/lib/authService";
@@ -157,11 +156,11 @@ export default function Home() {
     <div className="bg-[#f5f4f0] py-10 sm:py-12">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
         <div className="overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)]">
-          <div className="relative mx-auto w-full">
+          <div className="relative mx-auto w-full flex items-center justify-center py-8 sm:py-12 px-4 bg-white border-b border-gray-100">
             <img
-              src={logo.src}
-              alt="Guida Nutrizionale"
-              className="h-37.5 w-full object-cover object-center sm:h-87.5 lg:h-125"
+              src="/brand/granmaster-cut-hero.png"
+              alt="GRANMASTER CUT - Il metodo semplice per dimagrire"
+              className="h-44 w-auto max-w-[90%] object-contain sm:h-56 lg:h-64"
             />
           </div>
 

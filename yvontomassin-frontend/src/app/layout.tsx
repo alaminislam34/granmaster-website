@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GranMaster Nutritional Guide",
-  description: "Crea il tuo piano nutrizionale personalizzato. Scegli i pasti e ricevi un piano su misura.",
-  applicationName: "GranMaster",
+  title: "GRANMASTER CUT - Il metodo semplice per dimagrire",
+  description: "Crea il tuo piano nutrizionale personalizzato con GranMaster Cut.",
+  applicationName: "GRANMASTER CUT",
   icons: {
     icon: [
       { url: "/favicon.ico" },

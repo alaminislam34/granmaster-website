@@ -72,11 +72,11 @@ export default function Header() {
   return (
     <header className="bg-white shadow-sm">
       <div className="mx-auto flex lg:max-w-7xl items-center justify-between px-6 py-3">
-        <Link href="/" aria-label="GranMaster Nutritional Guide" className="shrink-0">
+        <Link href="/" aria-label="GRANMASTER CUT" className="shrink-0 flex items-center">
           <img
             src="/brand/logo.png"
-            alt="GranMaster Nutritional Guide"
-            className="h-10 w-auto sm:h-12"
+            alt="GRANMASTER CUT"
+            className="h-10 w-auto sm:h-12 object-contain"
           />
         </Link>
 

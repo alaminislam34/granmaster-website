@@ -186,7 +186,7 @@ export default function Register() {
       <div className="w-full max-w-lg rounded-2xl bg-white p-10 shadow-xl">
         <div className="flex justify-center">
           <Link href="/" aria-label="Torna alla home" className="inline-flex justify-center">
-            <img src="/brand/logo.png" alt="GranMaster Nutritional Guide" className="h-16 w-auto cursor-pointer sm:h-20" />
+            <img src="/brand/logo.png" alt="GRANMASTER CUT" className="h-16 w-auto cursor-pointer sm:h-20 object-contain" />
           </Link>
         </div>
 
