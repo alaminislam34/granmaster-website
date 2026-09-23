@@ -71,7 +71,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <button
             className="fixed inset-0 z-30 bg-black/40 md:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
-            aria-label="Close menu overlay"
+            aria-label="Chiudi menu"
           />
         )}
 
@@ -90,7 +90,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <button
                 className="rounded-xl p-2 text-slate-600 transition hover:bg-slate-100 md:hidden"
                 onClick={() => setIsMobileMenuOpen(false)}
-                aria-label="Close sidebar"
+                aria-label="Chiudi barra laterale"
               >
                 <FiX className="text-xl" />
               </button>
@@ -125,7 +125,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               className="flex w-full items-center gap-3 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-red-50 hover:text-red-600"
             >
               <FiLogOut className="text-base text-slate-500" />
-              Esci
+              Disconnetti
             </button>
           </div>
         </aside>
@@ -140,7 +140,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <button
                   className="rounded-xl p-2 text-slate-700 transition hover:bg-slate-100 md:hidden"
                   onClick={() => setIsMobileMenuOpen(true)}
-                  aria-label="Open sidebar"
+                  aria-label="Apri barra laterale"
                 >
                   <FiMenu className="text-xl" />
                 </button>
@@ -154,7 +154,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   hover:bg-[#8F00FF]/10 hover:text-[#8F00FF]
   active:scale-95 active:shadow-sm"
                 >
-                  Go to website
+                  Torna al sito
                 </Link>
               </div>
 
@@ -170,7 +170,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {displayName}
                   </div>
                   <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
-                    Administrator
+                    Amministratore
                   </div>
                 </div>
 

@@ -90,7 +90,7 @@ export default function Header() {
                 : 'border border-[#8F00FF] text-[#8F00FF]'
             }`}
           >
-            Casa
+            Home
           </Link>
 
           <Link
@@ -121,56 +121,67 @@ export default function Header() {
 
               {/* Dropdown */}
               {dropdownOpen && (
-                <div className="absolute right-0 top-12 z-50 w-48 rounded-xl bg-white shadow-lg border border-gray-100 py-1 overflow-hidden">
-                  <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-xs font-semibold text-gray-900 truncate">{user.name}</p>
-                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                <div className="absolute right-0 top-12 z-50 w-56 rounded-2xl bg-white shadow-[0_20px_45px_-12px_rgba(0,0,0,0.15),0_0_0_1px_rgba(0,0,0,0.06)] py-1.5 overflow-hidden transition-all animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="px-4 py-3 border-b border-gray-100 bg-slate-50/60">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-bold text-gray-900 truncate">{user.name}</p>
+                      {isAdmin && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wider bg-[#8F00FF]/10 text-[#8F00FF] px-2 py-0.5 rounded-full shrink-0">
+                          Admin
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-gray-500 truncate mt-0.5">{user.email}</p>
                   </div>
 
-                  <Link
-                    href="/profile"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-[#8F00FF]/10 hover:text-[#8F00FF] transition"
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    Profilo
-                  </Link>
-
-                  <Link
-                    href="/savedMeals"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-[#8F00FF]/10 hover:text-[#8F00FF] transition"
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                    </svg>
-                    Pasti salvati
-                  </Link>
-
-                  {isAdmin && (
+                  <div className="p-1 space-y-0.5">
                     <Link
-                      href="/admin/dashboard"
+                      href="/profile"
                       onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-[#8F00FF]/10 hover:text-[#8F00FF] transition"
+                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 rounded-xl hover:bg-[#8F00FF]/10 hover:text-[#8F00FF] transition"
                     >
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
+                      <svg className="h-4 w-4 text-gray-400 group-hover:text-[#8F00FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
-                      Dashboard
+                      Profilo
                     </Link>
-                  )}
 
-                  <button
-                    onClick={handleLogout}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition"
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    Esci
-                  </button>
+                    <Link
+                      href="/savedMeals"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 rounded-xl hover:bg-[#8F00FF]/10 hover:text-[#8F00FF] transition"
+                    >
+                      <svg className="h-4 w-4 text-gray-400 group-hover:text-[#8F00FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                      </svg>
+                      Pasti salvati
+                    </Link>
+
+                    {isAdmin && (
+                      <Link
+                        href="/admin/dashboard"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 rounded-xl hover:bg-[#8F00FF]/10 hover:text-[#8F00FF] transition"
+                      >
+                        <svg className="h-4 w-4 text-gray-400 group-hover:text-[#8F00FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
+                        </svg>
+                        Pannello di controllo
+                      </Link>
+                    )}
+                  </div>
+
+                  <div className="p-1 border-t border-gray-100">
+                    <button
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 rounded-xl hover:bg-rose-50 transition"
+                    >
+                      <svg className="h-4 w-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      Disconnetti
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -243,7 +254,7 @@ export default function Header() {
               }`}
               onClick={() => setIsMenuOpen(false)}
             >
-              Casa
+              Home
             </Link>
 
             <Link
@@ -293,7 +304,7 @@ export default function Header() {
                   onClick={() => { handleLogout(); setIsMenuOpen(false); }}
                   className="mt-2 inline-flex items-center justify-center rounded-full border border-red-300 px-6 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 transition"
                 >
-                  Esci
+                  Disconnetti
                 </button>
               </>
             ) : (

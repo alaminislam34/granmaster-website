@@ -35,11 +35,15 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="it"
+      translate="no"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased notranslate`}
       style={{ colorScheme: "light" }}
     >
+      <head>
+        <meta name="google" content="notranslate" />
+      </head>
       <body suppressHydrationWarning className="min-h-full flex flex-col bg-background text-foreground">
         <Providers>
           {children}
