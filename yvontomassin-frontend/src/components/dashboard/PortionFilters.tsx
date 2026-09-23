@@ -5,6 +5,7 @@ import { FiSave } from "react-icons/fi";
 import { toast } from "sonner";
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
+import { PortionFiltersSkeleton } from "@/src/components/Shared/skeletons";
 
 type Band = { min: number; max: number; mealCount?: number };
 type Size = "Small" | "Medium" | "Large";
@@ -182,7 +183,7 @@ export default function PortionFilters() {
         </div>
 
         {loading ? (
-          <div className="px-4 py-12 text-center text-sm text-slate-400">Caricamento...</div>
+          <PortionFiltersSkeleton />
         ) : (
           CATEGORIES.map(({ key, label }, idx) => {
             const errors = invalidRows[key];
@@ -242,7 +243,7 @@ export default function PortionFilters() {
               })}
               </div>
               {invalid && (
-                <ul className="mt-2 ml-[140px] space-y-0.5 text-xs text-rose-600">
+                <ul className="mt-2 ml-35 space-y-0.5 text-xs text-rose-600">
                   {errors.map((err) => (
                     <li key={err}>{err}</li>
                   ))}

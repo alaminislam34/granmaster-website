@@ -19,9 +19,11 @@ interface CheatMealFromAPI {
 export default function Cheat({
   onClose,
   onAdd,
+  existingCheatMealIds = [],
 }: {
   onClose: () => void;
   onAdd: (cheatMealId: string) => void;
+  existingCheatMealIds?: string[];
 }) {
   const [meals, setMeals]       = useState<CheatMealFromAPI[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -71,19 +73,36 @@ export default function Cheat({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {meals.map((meal) => {
             const imgSrc = getImageUrl(meal.image);
+            const isAlreadyAdded = existingCheatMealIds.includes(meal._id);
             return (
               <button
                 key={meal._id}
-                onClick={() => setSelected(meal._id)}
+                type="button"
+                disabled={isAlreadyAdded}
+                onClick={() => !isAlreadyAdded && setSelected(meal._id)}
                 className={`flex flex-col items-start overflow-hidden rounded-xl border p-0 text-left transition-shadow ${
-                  selected === meal._id
+                  isAlreadyAdded
+                    ? "opacity-50 border-gray-200 bg-slate-50 cursor-not-allowed"
+                    : selected === meal._id
                     ? "ring-1 ring-[#8F00FF] border-[#8F00FF] shadow-md"
                     : "border-gray-100 hover:border-[#8F00FF]"
                 }`}
               >
-                <SquareMealImage src={imgSrc} alt={meal.name} fallback="🍔" />
+                <div className="relative w-full">
+                  <SquareMealImage src={imgSrc} alt={meal.name} fallback="🍔" />
+                  {isAlreadyAdded && (
+                    <span className="absolute top-2 right-2 rounded-full bg-slate-900/80 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-xs">
+                      Già aggiunto
+                    </span>
+                  )}
+                </div>
                 <div className="w-full px-4 py-3">
-                  <div className="text-sm font-semibold text-gray-900">{meal.name}</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-gray-900">{meal.name}</span>
+                    {isAlreadyAdded && (
+                      <span className="text-[10px] font-semibold text-slate-500">Nel piano</span>
+                    )}
+                  </div>
                   <div className="mt-1 text-xs text-gray-500 line-clamp-2">{meal.description}</div>
                   <div className="mt-2 flex gap-3 text-[11px] text-gray-500">
                     <span className="font-semibold text-[#8F00FF]">{meal.nutrition?.calories ?? 0} kcal</span>

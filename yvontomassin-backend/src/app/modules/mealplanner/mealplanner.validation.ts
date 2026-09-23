@@ -97,7 +97,7 @@ const varianteValidation = z.object({
   body: z.object({
     planId: z.string({ message: 'planId is required' }),
     slotIndex: z.number({ message: 'slotIndex is required' }).int().min(0),
-    currentMealId: z.string({ message: 'currentMealId is required' }),
+    currentMealId: z.string().optional().default(''),
     fewerCaloriesOnly: z.boolean().optional(),
   }),
 });

@@ -29,11 +29,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { profileImage, profileName, setProfileImage, setProfileName } = useProfile();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
-  // Seed context from JWT token on mount (name) and localStorage (image already handled by context)
+  const [authorized, setAuthorized] = React.useState(false);
+
+  // Authenticate and seed context from JWT token
   useEffect(() => {
     const user = getCurrentUser();
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+    if (user.role !== 'admin' && !user.is_admin) {
+      toast.error('Accesso negato. Solo per amministratori.');
+      router.push('/');
+      return;
+    }
+    setAuthorized(true);
     if (user?.name && !profileName) setProfileName(user.name);
-  }, [profileName, setProfileName]);
+  }, [profileName, setProfileName, router]);
 
   useEffect(() => {
     if (!isMobileMenuOpen) return;
@@ -62,6 +74,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Derive display values
   const displayName = profileName ?? getCurrentUser()?.name ?? "Admin";
   const displayInitial = displayName.charAt(0).toUpperCase();
+
+  if (!authorized) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#8F00FF] border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">

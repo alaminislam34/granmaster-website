@@ -109,7 +109,8 @@ const resolvePortionRange = async (
   const key = (PORTION_CATEGORIES.includes(category as PortionCategory)
     ? category
     : 'Snack') as PortionCategory;
-  return table[key][size];
+  const validSize = PORTION_SIZES.includes(size) ? size : 'Medium';
+  return table[key][validSize];
 };
 
 export const portionFilterService = {

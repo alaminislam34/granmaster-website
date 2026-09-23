@@ -2,7 +2,8 @@
 
 import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FiEye, FiEyeOff } from 'react-icons/fi';
+import Link from 'next/link';
+import { FiEye, FiEyeOff, FiLock } from 'react-icons/fi';
 import { resetPassword } from '@/src/lib/authService';
 import { toast } from 'sonner';
 
@@ -24,6 +25,10 @@ function ResetPassForm() {
     setError('');
     if (!password) {
       setError('Inserisci una nuova password');
+      return;
+    }
+    if (password.length < 8) {
+      setError('La password deve contenere almeno 8 caratteri');
       return;
     }
     if (password !== confirm) {
@@ -65,6 +70,30 @@ function ResetPassForm() {
           </div>
           <h2 className="mt-4 text-xl font-semibold text-gray-900">Password reimpostata!</h2>
           <p className="mt-2 text-sm text-gray-500">Reindirizzamento al login...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!email || !code) {
+    return (
+      <div className="min-h-screen bg-[#f7f6f4] flex items-center justify-center px-4">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-10 shadow-xl text-center">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#8F00FF]/10 text-[#8F00FF] mx-auto">
+            <FiLock className="h-7 w-7" />
+          </div>
+          <h2 className="mt-4 text-xl font-semibold text-gray-900">Sessione non valida o scaduta</h2>
+          <p className="mt-2 text-sm text-gray-500">
+            Per reimpostare la tua password, richiedi prima un codice di verifica inserendo la tua email.
+          </p>
+          <div className="mt-6">
+            <Link
+              href="/auth/forget"
+              className="inline-flex items-center justify-center rounded-full bg-[#8F00FF] px-6 py-3 text-sm font-semibold text-white hover:bg-[#7A00E5] transition"
+            >
+              Richiedi nuovo codice
+            </Link>
+          </div>
         </div>
       </div>
     );

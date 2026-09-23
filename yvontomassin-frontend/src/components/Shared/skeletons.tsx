@@ -4,7 +4,7 @@ export function MealCardSkeleton() {
   return (
     <article className="rounded-2xl border border-gray-100 bg-white p-6 shadow-[0_10px_25px_-20px_rgba(15,23,42,0.25)]">
       <div className="relative overflow-hidden rounded-xl bg-gray-100">
-        <div className="aspect-square w-full animate-pulse bg-gradient-to-br from-gray-200 via-[#8F00FF]/5 to-gray-100" />
+        <div className="aspect-square w-full animate-pulse bg-linear-to-br from-gray-200 via-[#8F00FF]/5 to-gray-100" />
         <span className="absolute left-3 top-3 h-6 w-20 rounded-full bg-white/90 shadow-sm" />
       </div>
       <div className="pt-3">
@@ -115,7 +115,7 @@ export function ProfilePageSkeleton() {
     <div className="min-h-screen bg-[#f5f4f0] py-10" aria-busy="true">
       <div className="mx-auto w-full max-w-4xl space-y-6 px-4 sm:px-6">
         <div className="overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_-40px_rgba(15,23,42,0.35)]">
-          <div className="h-32 animate-pulse bg-gradient-to-r from-gray-200 to-gray-100" />
+          <div className="h-32 animate-pulse bg-linear-to-r from-gray-200 to-gray-100" />
           <div className="px-6 pb-8 sm:px-10">
             <Bone className="-mt-14 mb-4 h-24 w-24 rounded-full border-4 border-white" />
             <Bone className="h-7 w-48" />
@@ -135,6 +135,70 @@ export function ProfilePageSkeleton() {
           <Bone className="h-11 w-full rounded-lg" />
           <Bone className="ml-auto h-10 w-40 rounded-xl" />
         </div>
+      </div>
+    </div>
+  );
+}
+
+export function PortionFiltersSkeleton() {
+  const categories = ["Colazione", "Merenda", "Pranzo", "Cena"];
+  return (
+    <div className="divide-y divide-slate-100" aria-busy="true">
+      {categories.map((cat, idx) => (
+        <div key={idx} className="px-4 py-4">
+          <div className="grid grid-cols-[140px_1fr_1fr_1fr] items-center gap-3">
+            <div className="flex items-center gap-2.5">
+              <Bone className="h-5 w-24 rounded-md" />
+            </div>
+            {[0, 1, 2].map((col) => (
+              <div
+                key={col}
+                className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3"
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <Bone className="h-3.5 w-12 rounded" />
+                  <Bone className="h-4 w-14 rounded-full bg-[#8F00FF]/15" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-10 w-full animate-pulse rounded-lg bg-white border border-slate-200/60" />
+                  <span className="text-xs font-semibold text-slate-300">–</span>
+                  <div className="h-10 w-full animate-pulse rounded-lg bg-white border border-slate-200/60" />
+                </div>
+                <div className="mt-1.5 flex justify-center">
+                  <Bone className="h-2.5 w-6 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function PortionFiltersPageSkeleton() {
+  return (
+    <div className="mx-auto max-w-5xl" aria-busy="true">
+      <div className="mb-6">
+        <Bone className="h-8 w-48 rounded-lg" />
+        <div className="mt-3 space-y-2">
+          <Bone className="h-4 w-full max-w-2xl rounded" />
+          <Bone className="h-4 w-full max-w-xl rounded" />
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="grid grid-cols-[140px_1fr_1fr_1fr] gap-0 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+          <span>Pasto</span>
+          <span className="text-center">Piccola</span>
+          <span className="text-center">Media</span>
+          <span className="text-center">Grande</span>
+        </div>
+        <PortionFiltersSkeleton />
+      </div>
+
+      <div className="mt-6 flex justify-end">
+        <Bone className="h-11 w-36 rounded-xl" />
       </div>
     </div>
   );

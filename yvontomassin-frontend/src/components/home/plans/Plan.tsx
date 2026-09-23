@@ -92,27 +92,27 @@ function PlanContent() {
 
   useEffect(() => { fetchPlan(); }, [fetchPlan]);
 
-  // ─── Variante (swap one meal) ────────────────────────────────────────────────
+  // ─── Variante (swap or restore one meal) ────────────────────────────────────
   async function handleVariante(slotIndex: number) {
     if (!plan) return;
     const slot = plan.slots[slotIndex];
-    if (!slot.meal) return;
+    const isAdding = !slot.meal;
     setSwapping(slotIndex);
     try {
       const res = await baseApi.post(ENDPOINTS.mealPlannerVariante, {
         planId: plan._id,
         slotIndex,
-        currentMealId: slot.meal._id,
+        currentMealId: slot.meal?._id ?? "",
       });
       const updatedPlan = res.data?.data?.plan ?? res.data?.data ?? null;
 
       if (updatedPlan) {
         setPlan(updatedPlan);
-        toast.success("Pasto cambiato con successo!");
+        toast.success(isAdding ? "Pasto aggiunto con successo!" : "Pasto cambiato con successo!");
       }
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
-      const msg = e?.response?.data?.message || "Variante fallita.";
+      const msg = e?.response?.data?.message || (isAdding ? "Aggiunta pasto fallita." : "Variante fallita.");
       toast.error(msg);
     } finally {
       setSwapping(null);
@@ -373,11 +373,17 @@ function PlanContent() {
 
                     <button
                       onClick={() => handleVariante(idx)}
-                      disabled={swapping === idx || !meal}
-                      className="mt-4 w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 hover:border-[#8F00FF] flex items-center justify-center gap-2 bg-white disabled:opacity-50 transition"
+                      disabled={swapping === idx}
+                      className={`mt-4 w-full rounded-lg border px-4 py-3 text-sm font-semibold flex items-center justify-center gap-2 transition ${
+                        !meal
+                          ? "border-[#8F00FF] bg-[#8F00FF]/5 text-[#8F00FF] hover:bg-[#8F00FF]/10 shadow-sm"
+                          : "border-gray-200 bg-white text-gray-700 hover:border-[#8F00FF]"
+                      } disabled:opacity-50`}
                     >
                       <FiRefreshCw className={`text-sm ${swapping === idx ? "animate-spin" : ""}`} />
-                      {swapping === idx ? "Cambio..." : "VARIANTE"}
+                      {swapping === idx
+                        ? (!meal ? "Aggiunta in corso..." : "Cambio...")
+                        : (!meal ? "+ AGGIUNGI PASTO" : "VARIANTE")}
                     </button>
                     {meal && (
                       <button
@@ -495,6 +501,12 @@ function PlanContent() {
         <Cheat
           onClose={() => setIsCheatOpen(false)}
           onAdd={handleAddCheat}
+          existingCheatMealIds={
+            plan?.cheatMeals?.map((cm) => {
+              const ref = typeof cm.cheatMealRef === "object" ? cm.cheatMealRef : null;
+              return ref?._id || String(cm.cheatMealRef || "");
+            }) ?? []
+          }
         />
       )}
     </section>

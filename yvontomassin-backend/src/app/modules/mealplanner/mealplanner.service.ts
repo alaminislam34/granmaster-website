@@ -463,12 +463,12 @@ const variante = async (payload: {
   let maxCal = slot.targetCaloriesMax;
 
   if (!minCal || !maxCal || minCal <= 0 || maxCal <= 0) {
-    // Only query currentMeal if needed for legacy plan portion resolution
-    const currentMeal = await MealModel.findById(currentMealId)
-      .select('calories calorieRange')
-      .lean();
-    if (!currentMeal) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'Current meal not found');
+    let currentCalories = 300;
+    if (currentMealId) {
+      const currentMeal = await MealModel.findById(currentMealId)
+        .select('calories calorieRange')
+        .lean();
+      if (currentMeal?.calories) currentCalories = currentMeal.calories;
     }
 
     const table = await portionFilterService.getOrCreateTable();
@@ -480,8 +480,8 @@ const variante = async (payload: {
     if (catBands) {
       for (const size of PORTION_SIZES) {
         if (
-          currentMeal.calories >= catBands[size].min &&
-          currentMeal.calories <= catBands[size].max
+          currentCalories >= catBands[size].min &&
+          currentCalories <= catBands[size].max
         ) {
           minCal = catBands[size].min;
           maxCal = catBands[size].max;
@@ -491,7 +491,7 @@ const variante = async (payload: {
     }
 
     if (!minCal || !maxCal || minCal <= 0 || maxCal <= 0) {
-      const cr = currentMeal.calorieRange || getCalorieRange(currentMeal.calories);
+      const cr = getCalorieRange(currentCalories);
       minCal = CALORIE_RANGE_MAP[cr].min;
       maxCal = CALORIE_RANGE_MAP[cr].max;
     }

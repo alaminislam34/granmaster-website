@@ -32,10 +32,13 @@ interface Meal {
 
 // Italian UI label → English backend enum
 const CATEGORY_MAP: Record<string, MealCategory> = {
-  Colazione: "Breakfast", Pranzo: "Lunch", Cena: "Dinner",
-  Spuntino: "Snack",
+  Colazione: "Breakfast",
+  Merenda: "Snack",
+  Pranzo: "Lunch",
+  Cena: "Dinner",
+  Spuntino: "Snack", // backward compatibility
 };
-const CATEGORY_LABELS = Object.keys(CATEGORY_MAP);
+const CATEGORY_LABELS = ["Colazione", "Merenda", "Pranzo", "Cena"];
 const FILTER_TABS = ["Tutti", ...CATEGORY_LABELS, "Pasto veloce"];
 
 const BADGE: Record<MealCategory, string> = {
@@ -45,9 +48,29 @@ const BADGE: Record<MealCategory, string> = {
   Dinner:    "bg-slate-200 text-slate-700",
 };
 const BADGE_LABEL: Record<MealCategory, string> = {
-  Breakfast: "Colazione", Lunch: "Pranzo", Snack: "Spuntino",
+  Breakfast: "Colazione",
+  Lunch: "Pranzo",
+  Snack: "Merenda",
   Dinner: "Cena",
 };
+
+export function autoDetectPortion(categoryLabel: string, calories: number): PortionType {
+  const cat = CATEGORY_MAP[categoryLabel] || "Breakfast";
+  if (cat === "Breakfast") {
+    if (calories <= 300) return "Small";
+    if (calories <= 450) return "Medium";
+    return "Large";
+  }
+  if (cat === "Snack") {
+    if (calories <= 200) return "Small";
+    if (calories <= 350) return "Medium";
+    return "Large";
+  }
+  // Lunch / Dinner
+  if (calories <= 400) return "Small";
+  if (calories <= 600) return "Medium";
+  return "Large";
+}
 
 // ─── Empty form state ─────────────────────────────────────────────────────────
 const EMPTY_FORM = {
@@ -675,7 +698,15 @@ export default function Butrition() {
                   <div className="relative">
                     <select
                       value={form.category}
-                      onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                      onChange={(e) => {
+                        const newCat = e.target.value;
+                        const cal = Number(form.calories) || 0;
+                        setForm((f) => ({
+                          ...f,
+                          category: newCat,
+                          portionType: cal > 0 ? autoDetectPortion(newCat, cal) : f.portionType,
+                        }));
+                      }}
                       className="h-11 w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 text-[13px] outline-none focus:border-[#8F00FF] transition"
                     >
                       {CATEGORY_LABELS.map((c) => <option key={c}>{c}</option>)}
@@ -725,7 +756,19 @@ export default function Butrition() {
                         <input
                           type="number" min="0"
                           value={form[field]}
-                          onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            setForm((f) => {
+                              const next = { ...f, [field]: raw };
+                              if (field === "calories") {
+                                const num = Number(raw);
+                                if (num > 0) {
+                                  next.portionType = autoDetectPortion(f.category, num);
+                                }
+                              }
+                              return next;
+                            });
+                          }}
                           className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-[13px] outline-none focus:border-[#8F00FF] transition"
                           placeholder="0"
                         />
