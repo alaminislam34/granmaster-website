@@ -24,7 +24,6 @@ export const sendEmail = async (to: string, html: string) => {
 
   try {
     await transporter.sendMail({
-      // Gmail rejects From addresses that don't match the authenticated account
       from: `"Yvon Tomassin" <${config.email_user}>`,
       to,
       subject: 'Verification Code',
