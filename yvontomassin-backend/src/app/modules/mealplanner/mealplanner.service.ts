@@ -497,67 +497,49 @@ const variante = async (payload: {
     }
   }
 
-  // 2. Collect meals used in other slots of this plan to prevent repetitions
-  const otherSlotMealIds = new Set<string>();
-  plan.slots.forEach((s, idx) => {
-    if (idx !== slotIndex && s.meal) {
-      otherSlotMealIds.add(s.meal.toString());
-    }
-  });
-
-  // 3. Find candidate meals with minimal memory footprint (.lean()) and field projection
-  const candidates = await MealModel.find({
+  // 2. Query candidate meals: first matching the portion calorie filter, fallback to all meals in category if needed
+  let candidates = await MealModel.find({
     category: slot.category,
     calories: { $gte: minCal, $lte: maxCal },
   })
     .select('_id name calories protein carbohydrates fat image description isQuickMeal')
-    .sort({ calories: 1, name: 1, _id: 1 })
+    .sort({ name: 1, calories: 1, _id: 1 })
     .lean();
+
+  if (!candidates.length) {
+    candidates = await MealModel.find({ category: slot.category })
+      .select('_id name calories protein carbohydrates fat image description isQuickMeal')
+      .sort({ name: 1, calories: 1, _id: 1 })
+      .lean();
+  }
 
   if (!candidates.length) {
     throw new AppError(
       StatusCodes.NOT_FOUND,
-      `Nessun pasto trovato per "${slot.slot}" nella porzione ${minCal}–${maxCal} kcal.`
+      `Nessun pasto trovato per "${slot.slot}". Aggiungi pasti per la categoria "${slot.category}" dal pannello admin.`
     );
   }
 
-  // 4. Linear and progressive scrolling
+  // 3. Strictly progressive circular selection:
+  // Cycles sequentially through every single variant: 0 -> 1 -> 2 -> ... -> N-1 -> 0
+  // No skipping meals and no repetition until all variants are visited.
   const currentIndex = candidates.findIndex(
     (m) => m._id.toString() === currentMealId
   );
 
-  let nextMeal: (typeof candidates)[number] | null = null;
-
-  // Primary pass: search forward from (currentIndex + 1) for a meal not current and not used in other slots
-  for (let offset = 1; offset <= candidates.length; offset++) {
-    const candidate = candidates[(currentIndex + offset) % candidates.length];
-    const candidateIdStr = candidate._id.toString();
-    if (candidateIdStr !== currentMealId && !otherSlotMealIds.has(candidateIdStr)) {
-      nextMeal = candidate;
-      break;
-    }
+  let nextMeal: (typeof candidates)[number];
+  if (currentIndex === -1) {
+    // Current meal not in the list, start with the first variant
+    nextMeal = candidates[0];
+  } else {
+    // Pick the next meal progressively; loops back to 0 once all have been shown
+    const nextIndex = (currentIndex + 1) % candidates.length;
+    nextMeal = candidates[nextIndex];
   }
 
-  // Secondary pass: if all candidates are used in other slots of today's plan,
-  // pick the next progressive candidate in the list that is simply not the current meal
-  if (!nextMeal) {
-    for (let offset = 1; offset <= candidates.length; offset++) {
-      const candidate = candidates[(currentIndex + offset) % candidates.length];
-      if (candidate._id.toString() !== currentMealId) {
-        nextMeal = candidate;
-        break;
-      }
-    }
-  }
-
-  if (!nextMeal) {
-    throw new AppError(
-      StatusCodes.NOT_FOUND,
-      `Nessun altro pasto disponibile per "${slot.slot}" in questa porzione (${minCal}–${maxCal} kcal). Aggiungi più pasti dal pannello admin.`
-    );
-  }
-
-  plan.slots[slotIndex].meal = nextMeal._id as Types.ObjectId;
+  slot.targetCaloriesMin = minCal;
+  slot.targetCaloriesMax = maxCal;
+  slot.meal = nextMeal._id as Types.ObjectId;
   await plan.save();
 
   const updated = await recalcPlan(plan._id as Types.ObjectId);
