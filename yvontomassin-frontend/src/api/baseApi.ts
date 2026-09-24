@@ -21,7 +21,6 @@ baseApi.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// On 401, try to refresh via the httpOnly cookie the backend sets
 baseApi.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -31,7 +30,6 @@ baseApi.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        // The backend reads refreshToken from cookies (withCredentials sends it)
         const res = await axios.post<{ data: { result: { accessToken: string } } }>(
           `${process.env.NEXT_PUBLIC_API_URL}${ENDPOINTS.refreshToken}`,
           {},
