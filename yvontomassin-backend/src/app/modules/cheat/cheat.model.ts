@@ -11,6 +11,7 @@ const CheatSchema = new Schema<ICheat>(
       protein: { type: Number, required: true },
       carbohydrates: { type: Number, required: true },
       fat: { type: Number, required: true },
+      alcohol: { type: Number, default: 0 },
     },
   },
   { timestamps: true }

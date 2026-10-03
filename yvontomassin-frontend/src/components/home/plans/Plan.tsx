@@ -12,6 +12,7 @@ import EmptyPlan from "./EmptyPlan";
 import PlanSkeleton from "./PlanSkeleton";
 import { getImageUrl } from "@/src/lib/imageUrl";
 import SquareMealImage from "@/src/components/Shared/SquareMealImage";
+import Modal from "@/src/components/Shared/Modal";
 import { downloadSavedPdf, saveContent } from "@/src/lib/savedContent";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -19,6 +20,7 @@ interface MealInSlot {
   _id: string; name: string; category: string;
   calories: number; protein: number; carbohydrates: number; fat: number;
   calorieRange: string; image?: string; description?: string;
+  dietaryType?: "Meat" | "Fish" | "Vegan";
 }
 
 interface Slot {
@@ -27,7 +29,7 @@ interface Slot {
 }
 
 interface CheatMealEntry {
-  cheatMealRef: { _id: string; name: string; nutrition: { calories: number; protein: number; carbohydrates: number; fat: number }; image?: string; description?: string };
+  cheatMealRef: { _id: string; name: string; nutrition: { calories: number; protein: number; carbohydrates: number; fat: number; alcohol?: number }; image?: string; description?: string };
   name: string; calories: number;
 }
 
@@ -56,6 +58,10 @@ function PlanContent() {
   const [error, setError]           = useState("");
   const [swapping, setSwapping]     = useState<number | null>(null);
   const [isCheatOpen, setIsCheatOpen] = useState(false);
+  const [slotDietaryFilter, setSlotDietaryFilter] = useState<Record<number, "Meat" | "Fish" | "Vegan" | undefined>>({});
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [customDayName, setCustomDayName] = useState("");
+  const [savingDay, setSavingDay]   = useState(false);
 
   // ─── Fetch plan ─────────────────────────────────────────────────────────────
   const fetchPlan = useCallback(async () => {
@@ -93,16 +99,28 @@ function PlanContent() {
   useEffect(() => { fetchPlan(); }, [fetchPlan]);
 
   // ─── Variante (swap or restore one meal) ────────────────────────────────────
-  async function handleVariante(slotIndex: number) {
+  async function handleVariante(
+    slotIndex: number,
+    dietaryOverride?: "Meat" | "Fish" | "Vegan",
+    random = false
+  ) {
     if (!plan) return;
     const slot = plan.slots[slotIndex];
     const isAdding = !slot.meal;
     setSwapping(slotIndex);
+
+    const hasCheat = (plan.cheatMeals?.length ?? 0) > 0;
+    const targetPortion = hasCheat ? "Small" : undefined;
+    const dietaryType = dietaryOverride !== undefined ? dietaryOverride : slotDietaryFilter[slotIndex];
+
     try {
       const res = await baseApi.post(ENDPOINTS.mealPlannerVariante, {
         planId: plan._id,
         slotIndex,
         currentMealId: slot.meal?._id ?? "",
+        dietaryType: dietaryType || undefined,
+        random,
+        targetPortion,
       });
       const updatedPlan = res.data?.data?.plan ?? res.data?.data ?? null;
 
@@ -117,6 +135,18 @@ function PlanContent() {
     } finally {
       setSwapping(null);
     }
+  }
+
+  function handleFilterClick(slotIndex: number, type: "Meat" | "Fish" | "Vegan") {
+    const current = slotDietaryFilter[slotIndex];
+    const next = current === type ? undefined : type;
+    setSlotDietaryFilter((prev) => ({ ...prev, [slotIndex]: next }));
+    void handleVariante(slotIndex, next, false);
+  }
+
+  function handleRandomClick(slotIndex: number) {
+    const currentFilter = slotDietaryFilter[slotIndex];
+    void handleVariante(slotIndex, currentFilter, true);
   }
 
   // ─── Add cheat meal ──────────────────────────────────────────────────────────
@@ -239,7 +269,35 @@ function PlanContent() {
   }
 
   function handleSaveDay() {
-    void persistAndDownload("day");
+    setCustomDayName(`Giornata ${new Date().toLocaleDateString("it-IT")}`);
+    setSaveModalOpen(true);
+  }
+
+  async function handleConfirmSaveDay() {
+    if (!plan) return;
+    const user = getCurrentUser();
+    if (!user?.id) {
+      toast.error("Accedi per salvare e scaricare il PDF.");
+      return;
+    }
+    const finalTitle = customDayName.trim() || `Giornata ${new Date().toLocaleDateString("it-IT")}`;
+    setSavingDay(true);
+    try {
+      const saved = await saveContent({
+        userId: user.id,
+        type: "day",
+        title: finalTitle,
+        snapshot: buildSnapshot(false),
+      });
+      await downloadSavedPdf(saved._id, `${saved.title}.pdf`);
+      toast.success("Giornata salvata. PDF scaricato.");
+      setSaveModalOpen(false);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Salvataggio o PDF fallito.");
+    } finally {
+      setSavingDay(false);
+    }
   }
 
   function handleSaveStrategy() {
@@ -345,11 +403,18 @@ function PlanContent() {
                   </div>
 
                   <div className="pt-3">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {visibleMeal
-                        ? visibleMeal.name
-                        : <span className="text-gray-400 italic text-sm">Nessun pasto disponibile</span>}
-                    </h3>
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {visibleMeal
+                          ? visibleMeal.name
+                          : <span className="text-gray-400 italic text-sm">Nessun pasto disponibile</span>}
+                      </h3>
+                      {visibleMeal?.dietaryType && (
+                        <span className="shrink-0 rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-[#8F00FF] border border-purple-100">
+                          {visibleMeal.dietaryType === "Meat" ? "🥩 Meat" : visibleMeal.dietaryType === "Fish" ? "🐟 Fish" : "🌱 Vegan"}
+                        </span>
+                      )}
+                    </div>
                     {visibleMeal?.description && (
                       <p className="mt-1 text-[12px] text-gray-500 leading-snug">{visibleMeal.description}</p>
                     )}
@@ -371,10 +436,45 @@ function PlanContent() {
                       </div>
                     )}
 
+                    {(slot.category === "Lunch" || slot.category === "Dinner") && (
+                      <div className="mt-3 grid grid-cols-4 gap-1.5">
+                        {[
+                          { type: "Meat" as const, label: "🥩 Meat" },
+                          { type: "Fish" as const, label: "🐟 Fish" },
+                          { type: "Vegan" as const, label: "🌱 Vegan" },
+                        ].map((btn) => {
+                          const active = slotDietaryFilter[idx] === btn.type;
+                          return (
+                            <button
+                              key={btn.type}
+                              type="button"
+                              onClick={() => handleFilterClick(idx, btn.type)}
+                              disabled={swapping === idx}
+                              className={`rounded-lg border px-1 py-1.5 text-center text-[11px] font-semibold transition ${
+                                active
+                                  ? "border-[#8F00FF] bg-[#8F00FF]/10 text-[#8F00FF]"
+                                  : "border-gray-200 bg-gray-50/70 text-gray-600 hover:border-[#8F00FF] hover:bg-white"
+                              } disabled:opacity-50`}
+                            >
+                              {btn.label}
+                            </button>
+                          );
+                        })}
+                        <button
+                          type="button"
+                          onClick={() => handleRandomClick(idx)}
+                          disabled={swapping === idx}
+                          className="rounded-lg border border-purple-200 bg-purple-50/60 px-1 py-1.5 text-center text-[11px] font-semibold text-[#8F00FF] transition hover:bg-[#8F00FF] hover:text-white disabled:opacity-50"
+                        >
+                          🎲 Random
+                        </button>
+                      </div>
+                    )}
+
                     <button
                       onClick={() => handleVariante(idx)}
                       disabled={swapping === idx}
-                      className={`mt-4 w-full rounded-lg border px-4 py-3 text-sm font-semibold flex items-center justify-center gap-2 transition ${
+                      className={`mt-3 w-full rounded-lg border px-4 py-2.5 text-sm font-semibold flex items-center justify-center gap-2 transition ${
                         !meal
                           ? "border-[#8F00FF] bg-[#8F00FF]/5 text-[#8F00FF] hover:bg-[#8F00FF]/10 shadow-sm"
                           : "border-gray-200 bg-white text-gray-700 hover:border-[#8F00FF]"
@@ -508,6 +608,55 @@ function PlanContent() {
             }) ?? []
           }
         />
+      )}
+
+      {saveModalOpen && (
+        <Modal
+          open
+          onClose={() => setSaveModalOpen(false)}
+          title="Salva questa giornata"
+          subtitle="Assegna un nome personalizzato alla tua giornata alimentare."
+          size="sm"
+          footer={
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setSaveModalOpen(false)}
+                className="rounded-lg px-4 py-2 text-xs font-semibold text-gray-500 hover:text-gray-800 transition"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSaveDay}
+                disabled={savingDay}
+                className="rounded-lg bg-[#8F00FF] px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#7A00E5] disabled:opacity-60 transition"
+              >
+                {savingDay ? "Salvataggio..." : "Salva e scarica PDF"}
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-3">
+            <label className="block text-xs font-semibold text-gray-700">
+              Nome della giornata
+            </label>
+            <input
+              type="text"
+              value={customDayName}
+              onChange={(e) => setCustomDayName(e.target.value)}
+              placeholder="es. Lunedì, Martedì, Giorno di allenamento..."
+              className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#8F00FF] transition"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void handleConfirmSaveDay();
+                }
+              }}
+            />
+          </div>
+        </Modal>
       )}
     </section>
   );

@@ -13,7 +13,7 @@ interface CheatMealFromAPI {
   name: string;
   description: string;
   image?: string;
-  nutrition: { calories: number; protein: number; carbohydrates: number; fat: number };
+  nutrition: { calories: number; protein: number; carbohydrates: number; fat: number; alcohol?: number };
 }
 
 export default function Cheat({
@@ -166,6 +166,7 @@ export default function Cheat({
                     <span>P: {meal.nutrition?.protein ?? 0}g</span>
                     <span>C: {meal.nutrition?.carbohydrates ?? 0}g</span>
                     <span>F: {meal.nutrition?.fat ?? 0}g</span>
+                    {Boolean(meal.nutrition?.alcohol) && <span>A: {meal.nutrition?.alcohol}g</span>}
                   </div>
                 </div>
               </div>

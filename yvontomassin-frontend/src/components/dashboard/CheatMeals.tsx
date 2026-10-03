@@ -18,13 +18,13 @@ import ConfirmModal from "@/src/components/Shared/ConfirmModal";
 import { MealTableRowSkeleton } from "@/src/components/Shared/skeletons";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-interface CheatNutrition { calories: number; protein: number; carbohydrates: number; fat: number; }
+interface CheatNutrition { calories: number; protein: number; carbohydrates: number; fat: number; alcohol?: number; }
 interface CheatMeal {
   _id: string; name: string; description: string;
   image?: string; nutrition: CheatNutrition; createdAt: string;
 }
 
-const EMPTY_FORM = { name: "", description: "", calories: "", protein: "", carbohydrates: "", fat: "" };
+const EMPTY_FORM = { name: "", description: "", calories: "", protein: "", carbohydrates: "", fat: "", alcohol: "" };
 const PAGE_SIZE = 8;
 
 export default function CheatMeals() {
@@ -80,6 +80,7 @@ export default function CheatMeals() {
       protein: String(meal.nutrition?.protein ?? ""),
       carbohydrates: String(meal.nutrition?.carbohydrates ?? ""),
       fat: String(meal.nutrition?.fat ?? ""),
+      alcohol: String(meal.nutrition?.alcohol ?? ""),
     });
     setImageFile(null);
     setImagePreview(getImageUrl(meal.image) ?? "");
@@ -96,13 +97,13 @@ export default function CheatMeals() {
     setImagePreview(URL.createObjectURL(file));
   }
 
-  // Helper function for calorie validation
-  const calculateExpectedCalories = (protein: number, carbs: number, fat: number): number => {
-    return Math.round((protein * 4) + (carbs * 4) + (fat * 9));
+  // Helper function for calorie validation (Alcohol = 7 kcal/g)
+  const calculateExpectedCalories = (protein: number, carbs: number, fat: number, alcohol = 0): number => {
+    return Math.round((protein * 4) + (carbs * 4) + (fat * 9) + (alcohol * 7));
   };
 
-  const validateCalorieConsistency = (calories: number, protein: number, carbs: number, fat: number): string | null => {
-    const expected = calculateExpectedCalories(protein, carbs, fat);
+  const validateCalorieConsistency = (calories: number, protein: number, carbs: number, fat: number, alcohol = 0): string | null => {
+    const expected = calculateExpectedCalories(protein, carbs, fat, alcohol);
     const tolerance = Math.max(5, expected * 0.05); // 5% tolerance or minimum 5 calories
     
     if (Math.abs(calories - expected) > tolerance) {
@@ -123,8 +124,9 @@ export default function CheatMeals() {
     const protein = Number(form.protein) || 0;
     const carbs = Number(form.carbohydrates) || 0;
     const fat = Number(form.fat) || 0;
+    const alcohol = Number(form.alcohol) || 0;
     
-    const validationError = validateCalorieConsistency(calories, protein, carbs, fat);
+    const validationError = validateCalorieConsistency(calories, protein, carbs, fat, alcohol);
     if (validationError) { 
       setFormError(validationError); 
       return; 
@@ -140,6 +142,7 @@ export default function CheatMeals() {
         protein: Number(form.protein) || 0,
         carbohydrates: Number(form.carbohydrates) || 0,
         fat: Number(form.fat) || 0,
+        alcohol: Number(form.alcohol) || 0,
       },
     }));
 
@@ -264,13 +267,14 @@ export default function CheatMeals() {
                   <th className="px-4 py-3">PROTEINA</th>
                   <th className="px-4 py-3">CARBOIDRATI</th>
                   <th className="px-4 py-3">GRASSO</th>
+                  <th className="px-4 py-3">ALCOL</th>
                   <th className="px-4 py-3 text-right">AZIONI</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white text-[13px] text-slate-700">
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <MealTableRowSkeleton key={i} columns={6} />
+                    <MealTableRowSkeleton key={i} columns={7} />
                   ))
                 ) : paginated.length === 0 ? (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">Nessuno sgarro trovato.</td></tr>
@@ -293,6 +297,7 @@ export default function CheatMeals() {
                       <td className="px-4 py-3">{meal.nutrition?.protein ?? 0} g</td>
                       <td className="px-4 py-3">{meal.nutrition?.carbohydrates ?? 0} g</td>
                       <td className="px-4 py-3">{meal.nutrition?.fat ?? 0} g</td>
+                      <td className="px-4 py-3">{meal.nutrition?.alcohol ?? 0} g</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-2 text-slate-500">
                           <button onClick={() => openEdit(meal)} className="rounded-md p-1.5 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Edit">
@@ -421,16 +426,29 @@ export default function CheatMeals() {
               {/* Nutrition */}
               <div>
                 <p className="mb-3 text-[12px] font-semibold text-[#8F00FF]">▣ Nutrizioni</p>
-                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-                  {(["calories","protein","carbohydrates","fat"] as const).map((field) => (
+                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-5">
+                  {(["calories","protein","carbohydrates","fat","alcohol"] as const).map((field) => (
                     <div key={field}>
                       <label className="mb-2 block text-[12px] font-semibold text-slate-600">
-                        {field === "calories" ? "Calorie" : field === "protein" ? "Proteina" : field === "carbohydrates" ? "Carboidrati" : "Grasso"}
+                        {field === "calories" ? "Calorie" : field === "protein" ? "Proteina (g)" : field === "carbohydrates" ? "Carboidrati (g)" : field === "fat" ? "Grasso (g)" : "Alcol (g)"}
                       </label>
                       <input
                         type="number" min="0"
                         value={(form as Record<string, string>)[field]}
-                        onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setForm((f) => {
+                            const updated = { ...f, [field]: val };
+                            if (field !== "calories") {
+                              const p = Number(field === "protein" ? val : f.protein) || 0;
+                              const c = Number(field === "carbohydrates" ? val : f.carbohydrates) || 0;
+                              const ft = Number(field === "fat" ? val : f.fat) || 0;
+                              const al = Number(field === "alcohol" ? val : f.alcohol) || 0;
+                              updated.calories = String(Math.round(p * 4 + c * 4 + ft * 9 + al * 7));
+                            }
+                            return updated;
+                          });
+                        }}
                         className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-[13px] outline-none focus:border-[#8F00FF] transition"
                         placeholder="0"
                       />

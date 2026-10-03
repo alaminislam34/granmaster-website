@@ -27,7 +27,7 @@ import {
 
 /** Fields to populate when returning a full meal plan */
 const MEAL_POPULATE_FIELDS =
-  'name category calories protein carbohydrates fat calorieRange image description isQuickMeal';
+  'name category calories protein carbohydrates fat calorieRange image description isQuickMeal dietaryType portionType';
 
 /**
  * Re-compute all daily totals and over-budget status, then persist.
@@ -449,14 +449,39 @@ const variante = async (payload: {
   slotIndex: number;
   currentMealId: string;
   fewerCaloriesOnly?: boolean;
+  dietaryType?: 'Meat' | 'Fish' | 'Vegan' | null;
+  random?: boolean;
+  targetPortion?: 'Small' | 'Medium' | 'Large';
 }) => {
-  const { planId, slotIndex, currentMealId } = payload;
+  const {
+    planId,
+    slotIndex,
+    currentMealId,
+    dietaryType,
+    random,
+    targetPortion,
+  } = payload;
 
   const plan = await MealPlanModel.findById(planId);
   if (!plan) throw new AppError(StatusCodes.NOT_FOUND, 'Meal plan not found');
 
   const slot = plan.slots[slotIndex];
   if (!slot) throw new AppError(StatusCodes.BAD_REQUEST, 'Invalid slot index');
+
+  // If targetPortion is explicitly 'Small' (e.g. cheat day compensation), look up the Small band
+  if (targetPortion === 'Small') {
+    const table = await portionFilterService.getOrCreateTable();
+    const catKey = (
+      PORTION_CATEGORIES.includes(slot.category as PortionCategory)
+        ? slot.category
+        : 'Snack'
+    ) as PortionCategory;
+    const catBands = table[catKey];
+    if (catBands?.Small) {
+      slot.targetCaloriesMin = catBands.Small.min;
+      slot.targetCaloriesMax = catBands.Small.max;
+    }
+  }
 
   // 1. Determine strict portion calorie bounds [minCal, maxCal]
   let minCal = slot.targetCaloriesMin;
@@ -472,9 +497,11 @@ const variante = async (payload: {
     }
 
     const table = await portionFilterService.getOrCreateTable();
-    const catKey = (PORTION_CATEGORIES.includes(slot.category as PortionCategory)
-      ? slot.category
-      : 'Snack') as PortionCategory;
+    const catKey = (
+      PORTION_CATEGORIES.includes(slot.category as PortionCategory)
+        ? slot.category
+        : 'Snack'
+    ) as PortionCategory;
     const catBands = table[catKey];
 
     if (catBands) {
@@ -497,18 +524,40 @@ const variante = async (payload: {
     }
   }
 
-  // 2. Query candidate meals: first matching the portion calorie filter, fallback to all meals in category if needed
-  let candidates = await MealModel.find({
+  // 2. Query candidate meals: filtered by portion calories, category, and optional dietaryType
+  const query: any = {
     category: slot.category,
     calories: { $gte: minCal, $lte: maxCal },
-  })
-    .select('_id name calories protein carbohydrates fat image description isQuickMeal')
+  };
+  if (dietaryType) {
+    query.dietaryType = dietaryType;
+  }
+
+  let candidates = await MealModel.find(query)
+    .select(
+      '_id name calories protein carbohydrates fat image description isQuickMeal dietaryType portionType'
+    )
     .sort({ name: 1, calories: 1, _id: 1 })
     .lean();
 
+  if (!candidates.length && dietaryType) {
+    // Fallback: match category + dietaryType even if calories are slightly outside
+    candidates = await MealModel.find({
+      category: slot.category,
+      dietaryType,
+    })
+      .select(
+        '_id name calories protein carbohydrates fat image description isQuickMeal dietaryType portionType'
+      )
+      .sort({ name: 1, calories: 1, _id: 1 })
+      .lean();
+  }
+
   if (!candidates.length) {
     candidates = await MealModel.find({ category: slot.category })
-      .select('_id name calories protein carbohydrates fat image description isQuickMeal')
+      .select(
+        '_id name calories protein carbohydrates fat image description isQuickMeal dietaryType portionType'
+      )
       .sort({ name: 1, calories: 1, _id: 1 })
       .lean();
   }
@@ -520,21 +569,25 @@ const variante = async (payload: {
     );
   }
 
-  // 3. Strictly progressive circular selection:
-  // Cycles sequentially through every single variant: 0 -> 1 -> 2 -> ... -> N-1 -> 0
-  // No skipping meals and no repetition until all variants are visited.
-  const currentIndex = candidates.findIndex(
-    (m) => m._id.toString() === currentMealId
-  );
-
+  // 3. Selection: Random OR progressive circular selection
   let nextMeal: (typeof candidates)[number];
-  if (currentIndex === -1) {
-    // Current meal not in the list, start with the first variant
-    nextMeal = candidates[0];
+  if (random) {
+    const otherCandidates = candidates.filter(
+      (m) => m._id.toString() !== currentMealId
+    );
+    const pool = otherCandidates.length > 0 ? otherCandidates : candidates;
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    nextMeal = pool[randomIndex];
   } else {
-    // Pick the next meal progressively; loops back to 0 once all have been shown
-    const nextIndex = (currentIndex + 1) % candidates.length;
-    nextMeal = candidates[nextIndex];
+    const currentIndex = candidates.findIndex(
+      (m) => m._id.toString() === currentMealId
+    );
+    if (currentIndex === -1) {
+      nextMeal = candidates[0];
+    } else {
+      const nextIndex = (currentIndex + 1) % candidates.length;
+      nextMeal = candidates[nextIndex];
+    }
   }
 
   slot.targetCaloriesMin = minCal;

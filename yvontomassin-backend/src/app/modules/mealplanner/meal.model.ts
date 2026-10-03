@@ -32,6 +32,11 @@ const MealSchema = new Schema<IMealWithRef>(
     image: { type: String, default: null },
     description: { type: String, default: null },
     isQuickMeal: { type: Boolean, default: false },
+    dietaryType: {
+      type: String,
+      enum: ['Meat', 'Fish', 'Vegan'],
+      default: null,
+    },
     nutritionRef: { type: Schema.Types.ObjectId, ref: 'Nutrition', default: null },
   },
   { timestamps: true }

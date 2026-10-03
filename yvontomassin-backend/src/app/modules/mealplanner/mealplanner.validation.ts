@@ -21,6 +21,7 @@ const createMealValidation = z.object({
     calorieRange: z.enum([...CALORIE_RANGES] as [string, ...string[]]).optional(),
     portionType: z.enum(['Small', 'Medium', 'Large']).optional(),
     isQuickMeal: z.boolean().optional(),
+    dietaryType: z.enum(['Meat', 'Fish', 'Vegan']).nullable().optional(),
   }),
 });
 
@@ -35,6 +36,7 @@ const updateMealValidation = z.object({
     calorieRange: z.enum([...CALORIE_RANGES] as [string, ...string[]]).optional(),
     portionType: z.enum(['Small', 'Medium', 'Large']).optional(),
     isQuickMeal: z.boolean().optional(),
+    dietaryType: z.enum(['Meat', 'Fish', 'Vegan']).nullable().optional(),
   }),
 });
 
@@ -99,6 +101,9 @@ const varianteValidation = z.object({
     slotIndex: z.number({ message: 'slotIndex is required' }).int().min(0),
     currentMealId: z.string().optional().default(''),
     fewerCaloriesOnly: z.boolean().optional(),
+    dietaryType: z.enum(['Meat', 'Fish', 'Vegan']).nullable().optional(),
+    random: z.boolean().optional(),
+    targetPortion: z.enum(['Small', 'Medium', 'Large']).optional(),
   }),
 });
 

@@ -20,6 +20,7 @@ import { MealTableRowSkeleton } from "@/src/components/Shared/skeletons";
 // ─── Types ────────────────────────────────────────────────────────────────────
 type MealCategory = "Breakfast" | "Lunch" | "Dinner" | "Snack" ;
 type PortionType = "Small" | "Medium" | "Large";
+export type DietaryType = "Meat" | "Fish" | "Vegan";
 
 interface NutritionInfo { calories: number; protein: number; carbohydrates: number; fat: number; }
 interface Meal {
@@ -27,6 +28,7 @@ interface Meal {
   portionSize: number; portionType?: PortionType; image?: string; nutrition: NutritionInfo;
   description?: string;
   isQuickMeal?: boolean;
+  dietaryType?: DietaryType;
   createdAt: string;
 }
 
@@ -76,6 +78,7 @@ export function autoDetectPortion(categoryLabel: string, calories: number): Port
 const EMPTY_FORM = {
   name: "", category: "Colazione", portionSize: "",
   portionType: "Medium" as PortionType,
+  dietaryType: "" as "" | DietaryType,
   calories: "", protein: "", carbohydrates: "", fat: "",
   description: "",
   isQuickMeal: false,
@@ -135,6 +138,7 @@ export default function Butrition() {
       category: BADGE_LABEL[meal.category] || "Colazione",
       portionSize: String(meal.portionSize),
       portionType: meal.portionType ?? "Medium",
+      dietaryType: meal.dietaryType || "",
       calories: String(meal.nutrition.calories),
       protein: String(meal.nutrition.protein),
       carbohydrates: String(meal.nutrition.carbohydrates),
@@ -176,6 +180,9 @@ export default function Butrition() {
     }
 
     const bodyCategory = CATEGORY_MAP[form.category] ?? "Breakfast";
+    const dietaryType = (bodyCategory === "Lunch" || bodyCategory === "Dinner") && form.dietaryType
+      ? form.dietaryType
+      : null;
 
     const fd = new FormData();
     if (imageFile) fd.append("image", imageFile);
@@ -184,6 +191,7 @@ export default function Butrition() {
       category: bodyCategory,
       portionSize: Number(form.portionSize),
       portionType: form.portionType,
+      dietaryType: dietaryType,
       description: form.description.trim() || undefined,
       isQuickMeal: form.isQuickMeal,
       nutrition: {
@@ -526,7 +534,6 @@ export default function Butrition() {
                             {meal.isQuickMeal && (
                               <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8F00FF]">Pasto veloce</p>
                             )}
-                            <p className="text-[11px] text-slate-500">{meal.portionSize}g</p>
                             {meal.description && (
                               <p className="text-[11px] text-slate-400 max-w-50 truncate">{meal.description}</p>
                             )}
@@ -534,9 +541,16 @@ export default function Butrition() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${BADGE[meal.category]}`}>
-                          {BADGE_LABEL[meal.category]}
-                        </span>
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${BADGE[meal.category]}`}>
+                            {BADGE_LABEL[meal.category]}
+                          </span>
+                          {meal.dietaryType && (
+                            <span className="rounded-full px-2 py-0.5 text-[9px] font-medium bg-slate-100 text-slate-700">
+                              {meal.dietaryType === "Meat" ? "🥩 Carne" : meal.dietaryType === "Fish" ? "🐟 Pesce" : "🌱 Vegano"}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">{meal.nutrition.calories} kcal</td>
                       <td className="px-4 py-3">{meal.nutrition.protein} g</td>
@@ -728,6 +742,40 @@ export default function Butrition() {
                   </div>
                 </div>
               </div>
+
+              {/* Dietary Type for Lunch / Dinner */}
+              {(form.category === "Pranzo" || form.category === "Cena") && (
+                <div>
+                  <label className="mb-2 block text-[12px] font-semibold text-slate-700">
+                    Tipo di alimento (Filtro Pranzo / Cena)
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { type: "Meat" as const, label: "🥩 Carne" },
+                      { type: "Fish" as const, label: "🐟 Pesce" },
+                      { type: "Vegan" as const, label: "🌱 Vegano" },
+                    ].map((d) => (
+                      <button
+                        key={d.type}
+                        type="button"
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            dietaryType: f.dietaryType === d.type ? "" : d.type,
+                          }))
+                        }
+                        className={`rounded-lg border px-3 py-2 text-[12px] font-semibold transition ${
+                          form.dietaryType === d.type
+                            ? "border-[#8F00FF] bg-[#8F00FF]/5 text-[#8F00FF]"
+                            : "border-slate-200 text-slate-600 hover:border-[#8F00FF]"
+                        }`}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-[13px] font-semibold text-slate-700">
                 <input

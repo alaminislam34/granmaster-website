@@ -3,6 +3,7 @@ export interface ICheatNutrition {
   protein: number;
   carbohydrates: number;
   fat: number;
+  alcohol?: number;
 }
 
 export interface ICheat {

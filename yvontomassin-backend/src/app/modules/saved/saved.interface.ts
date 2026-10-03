@@ -21,6 +21,7 @@ export interface ISavedSlotSnapshot {
 export interface ISavedCheatSnapshot {
   name: string;
   calories: number;
+  alcohol?: number;
   description?: string | null;
   image?: string | null;
 }
