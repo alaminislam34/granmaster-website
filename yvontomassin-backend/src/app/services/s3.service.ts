@@ -82,8 +82,13 @@ const encodeKey = (key: string) => key.split('/').map(encodeURIComponent).join('
 
 const buildPublicUrl = (key: string) => {
   const { bucket, region } = getRequiredConfig();
-  const baseUrl = `https://${bucket}.s3.${region}.amazonaws.com`;
 
+  if (config.s3.cdnDomain) {
+    const cdnBase = config.s3.cdnDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    return `https://${cdnBase}/${encodeKey(key)}`;
+  }
+
+  const baseUrl = `https://${bucket}.s3.${region}.amazonaws.com`;
   return `${baseUrl}/${encodeKey(key)}`;
 };
 
@@ -166,6 +171,13 @@ const getObjectKeyFromUrl = (imageUrl?: string | null) => {
     host === `s3.${s3Config.region}.amazonaws.com` || host === 's3.amazonaws.com';
 
   if (virtualHosted || globalVirtualHosted) {
+    return decodeURIComponent(pathKey);
+  }
+
+  if (
+    config.s3.cdnDomain &&
+    host === config.s3.cdnDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '')
+  ) {
     return decodeURIComponent(pathKey);
   }
 

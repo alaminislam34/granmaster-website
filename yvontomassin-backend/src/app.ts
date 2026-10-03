@@ -17,6 +17,7 @@ const allowedOrigins = Array.from(
     [
       config.frontend.url,
       process.env.CORS_ORIGINS,
+      'http://63.188.72.29:3000',
       'http://54.145.181.170:3000',
       'http://52.54.77.164:3000',
       'http://13.49.178.252:3000',

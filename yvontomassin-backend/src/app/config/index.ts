@@ -70,5 +70,6 @@ export default {
     region: process.env.S3_REGION || process.env.AWS_REGION,
     bucket: process.env.S3_BUCKET,
     keyPrefix: process.env.S3_KEY_PREFIX || 'uploads',
+    cdnDomain: process.env.S3_CDN_DOMAIN || 'd2uoi1i8191wv.cloudfront.net',
   },
 };
