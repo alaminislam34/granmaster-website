@@ -25,7 +25,7 @@ export type DietaryType = "Meat" | "Fish" | "Vegan";
 interface NutritionInfo { calories: number; protein: number; carbohydrates: number; fat: number; }
 interface Meal {
   _id: string; name: string; category: MealCategory;
-  portionSize: number; portionType?: PortionType; image?: string; nutrition: NutritionInfo;
+  portionType?: PortionType; image?: string; nutrition: NutritionInfo;
   description?: string;
   isQuickMeal?: boolean;
   dietaryType?: DietaryType;
@@ -76,7 +76,7 @@ export function autoDetectPortion(categoryLabel: string, calories: number): Port
 
 // ─── Empty form state ─────────────────────────────────────────────────────────
 const EMPTY_FORM = {
-  name: "", category: "Colazione", portionSize: "",
+  name: "", category: "Colazione",
   portionType: "Medium" as PortionType,
   dietaryType: "" as "" | DietaryType,
   calories: "", protein: "", carbohydrates: "", fat: "",
@@ -136,7 +136,6 @@ export default function Butrition() {
     setForm({
       name: meal.name,
       category: BADGE_LABEL[meal.category] || "Colazione",
-      portionSize: String(meal.portionSize),
       portionType: meal.portionType ?? "Medium",
       dietaryType: meal.dietaryType || "",
       calories: String(meal.nutrition.calories),
@@ -166,7 +165,6 @@ export default function Butrition() {
     setFormError("");
     if (!form.name.trim()) { setFormError("Il nome è obbligatorio"); return; }
     if (!form.description.trim()) { setFormError("La descrizione del pasto è obbligatoria"); return; }
-    if (!form.portionSize || Number(form.portionSize) < 1) { setFormError("La porzione deve essere ≥ 1 g"); return; }
     if (!form.calories) { setFormError("Le calorie sono obbligatorie"); return; }
 
     const p = Number(form.protein) || 0;
@@ -189,7 +187,6 @@ export default function Butrition() {
     fd.append("data", JSON.stringify({
       name: form.name.trim(),
       category: bodyCategory,
-      portionSize: Number(form.portionSize),
       portionType: form.portionType,
       dietaryType: dietaryType,
       description: form.description.trim() || undefined,
@@ -684,62 +681,26 @@ export default function Butrition() {
                 />
               </div>
 
-              {/* Portion Type */}
+              {/* Category (portion type is auto-detected from calories) */}
               <div>
-                <label className="mb-2 block text-[12px] font-semibold text-slate-700">Tipo porzione</label>
-                <div className="flex gap-3">
-                  {(["Small", "Medium", "Large"] as PortionType[]).map((pt) => (
-                    <button
-                      key={pt}
-                      type="button"
-                      onClick={() => setForm((f) => ({ ...f, portionType: pt }))}
-                      className={`flex-1 rounded-lg border px-3 py-2 text-[12px] font-semibold transition ${
-                        form.portionType === pt
-                          ? "border-[#8F00FF] bg-[#8F00FF]/5 text-[#8F00FF]"
-                          : "border-slate-200 text-slate-600 hover:border-[#8F00FF]"
-                      }`}
-                    >
-                      {pt === "Small" ? "Piccola" : pt === "Medium" ? "Media" : "Grande"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Category + Portion */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-[12px] font-semibold text-slate-700">Categoria</label>
-                  <div className="relative">
-                    <select
-                      value={form.category}
-                      onChange={(e) => {
-                        const newCat = e.target.value;
-                        const cal = Number(form.calories) || 0;
-                        setForm((f) => ({
-                          ...f,
-                          category: newCat,
-                          portionType: cal > 0 ? autoDetectPortion(newCat, cal) : f.portionType,
-                        }));
-                      }}
-                      className="h-11 w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 text-[13px] outline-none focus:border-[#8F00FF] transition"
-                    >
-                      {CATEGORY_LABELS.map((c) => <option key={c}>{c}</option>)}
-                    </select>
-                    <FiChevronDown className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-slate-500" />
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-2 block text-[12px] font-semibold text-slate-700">Porzione</label>
-                  <div className="relative">
-                    <input
-                      type="number" min="1"
-                      value={form.portionSize}
-                      onChange={(e) => setForm((f) => ({ ...f, portionSize: e.target.value }))}
-                      className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 pr-14 text-[13px] outline-none focus:border-[#8F00FF] transition"
-                      placeholder="0"
-                    />
-                    <span className="absolute top-1/2 right-3 -translate-y-1/2 text-[12px] text-slate-400">grammi</span>
-                  </div>
+                <label className="mb-2 block text-[12px] font-semibold text-slate-700">Categoria</label>
+                <div className="relative">
+                  <select
+                    value={form.category}
+                    onChange={(e) => {
+                      const newCat = e.target.value;
+                      const cal = Number(form.calories) || 0;
+                      setForm((f) => ({
+                        ...f,
+                        category: newCat,
+                        portionType: cal > 0 ? autoDetectPortion(newCat, cal) : f.portionType,
+                      }));
+                    }}
+                    className="h-11 w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 text-[13px] outline-none focus:border-[#8F00FF] transition"
+                  >
+                    {CATEGORY_LABELS.map((c) => <option key={c}>{c}</option>)}
+                  </select>
+                  <FiChevronDown className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-slate-500" />
                 </div>
               </div>
 

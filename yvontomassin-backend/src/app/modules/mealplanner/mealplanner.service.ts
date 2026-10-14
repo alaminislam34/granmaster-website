@@ -468,24 +468,27 @@ const variante = async (payload: {
   const slot = plan.slots[slotIndex];
   if (!slot) throw new AppError(StatusCodes.BAD_REQUEST, 'Invalid slot index');
 
-  // If targetPortion is explicitly 'Small' (e.g. cheat day compensation), look up the Small band
-  if (targetPortion === 'Small') {
-    const table = await portionFilterService.getOrCreateTable();
-    const catKey = (
-      PORTION_CATEGORIES.includes(slot.category as PortionCategory)
-        ? slot.category
-        : 'Snack'
-    ) as PortionCategory;
-    const catBands = table[catKey];
-    if (catBands?.Small) {
-      slot.targetCaloriesMin = catBands.Small.min;
-      slot.targetCaloriesMax = catBands.Small.max;
-    }
-  }
+  // Cheat-day compensation: targetPortion 'Small' forces the Small calorie band
+  const isCheatSwap = targetPortion === 'Small';
+  const catKey = (
+    PORTION_CATEGORIES.includes(slot.category as PortionCategory)
+      ? slot.category
+      : 'Snack'
+  ) as PortionCategory;
 
   // 1. Determine strict portion calorie bounds [minCal, maxCal]
   let minCal = slot.targetCaloriesMin;
   let maxCal = slot.targetCaloriesMax;
+
+  if (isCheatSwap) {
+    // Local only: the slot's stored band is not overwritten, so removing the cheat meal later restores normal bands
+    const table = await portionFilterService.getOrCreateTable();
+    const small = table[catKey]?.Small;
+    if (small && small.min > 0 && small.max > 0) {
+      minCal = small.min;
+      maxCal = small.max;
+    }
+  }
 
   if (!minCal || !maxCal || minCal <= 0 || maxCal <= 0) {
     let currentCalories = 300;
@@ -497,11 +500,6 @@ const variante = async (payload: {
     }
 
     const table = await portionFilterService.getOrCreateTable();
-    const catKey = (
-      PORTION_CATEGORIES.includes(slot.category as PortionCategory)
-        ? slot.category
-        : 'Snack'
-    ) as PortionCategory;
     const catBands = table[catKey];
 
     if (catBands) {
@@ -540,7 +538,8 @@ const variante = async (payload: {
     .sort({ name: 1, calories: 1, _id: 1 })
     .lean();
 
-  if (!candidates.length && dietaryType) {
+  // Cheat-day swaps must stay inside the Small band, so the calorie-free fallbacks are skipped
+  if (!candidates.length && dietaryType && !isCheatSwap) {
     // Fallback: match category + dietaryType even if calories are slightly outside
     candidates = await MealModel.find({
       category: slot.category,
@@ -553,7 +552,7 @@ const variante = async (payload: {
       .lean();
   }
 
-  if (!candidates.length) {
+  if (!candidates.length && !isCheatSwap) {
     candidates = await MealModel.find({ category: slot.category })
       .select(
         '_id name calories protein carbohydrates fat image description isQuickMeal dietaryType portionType'
@@ -565,7 +564,9 @@ const variante = async (payload: {
   if (!candidates.length) {
     throw new AppError(
       StatusCodes.NOT_FOUND,
-      `Nessun pasto trovato per "${slot.slot}". Aggiungi pasti per la categoria "${slot.category}" dal pannello admin.`
+      isCheatSwap
+        ? `Nessun pasto a basse calorie (${minCal}–${maxCal} kcal) trovato per "${slot.slot}". Aggiungi pasti in questa fascia dal pannello admin.`
+        : `Nessun pasto trovato per "${slot.slot}". Aggiungi pasti per la categoria "${slot.category}" dal pannello admin.`
     );
   }
 
@@ -590,8 +591,10 @@ const variante = async (payload: {
     }
   }
 
-  slot.targetCaloriesMin = minCal;
-  slot.targetCaloriesMax = maxCal;
+  if (!isCheatSwap) {
+    slot.targetCaloriesMin = minCal;
+    slot.targetCaloriesMax = maxCal;
+  }
   slot.meal = nextMeal._id as Types.ObjectId;
   await plan.save();
 
