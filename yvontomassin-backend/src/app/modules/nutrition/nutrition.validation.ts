@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const dietaryTypeSchema = z.enum(['Meat', 'Fish', 'Vegan']);
+
 const nutritionInfoSchema = z.object({
   calories: z.number({ message: 'Calories is required' }).min(0),
   protein: z.number({ message: 'Protein is required' }).min(0),
@@ -17,12 +19,11 @@ const createNutritionValidation = z.object({
       ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert', 'Drink'],
       { message: 'Category is required' }
     ),
-    portionSize: z
-      .number({ message: 'Portion size is required' })
-      .min(1, 'Portion size must be at least 1 gram'),
+    portionSize: z.number().min(1).optional(),
     portionType: z.enum(['Small', 'Medium', 'Large']).optional(),
     description: z.string().trim().optional(),
     isQuickMeal: z.boolean().optional(),
+    dietaryTypes: z.array(dietaryTypeSchema).max(3).optional(),
     nutrition: nutritionInfoSchema,
   }),
 });
@@ -44,6 +45,7 @@ const updateNutritionValidation = z.object({
     portionType: z.enum(['Small', 'Medium', 'Large']).optional(),
     description: z.string().trim().optional(),
     isQuickMeal: z.boolean().optional(),
+    dietaryTypes: z.array(dietaryTypeSchema).max(3).optional(),
     nutrition: partialNutritionInfoSchema.optional(),
   }),
 });

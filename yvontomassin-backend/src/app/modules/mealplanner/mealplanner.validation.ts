@@ -21,7 +21,7 @@ const createMealValidation = z.object({
     calorieRange: z.enum([...CALORIE_RANGES] as [string, ...string[]]).optional(),
     portionType: z.enum(['Small', 'Medium', 'Large']).optional(),
     isQuickMeal: z.boolean().optional(),
-    dietaryType: z.enum(['Meat', 'Fish', 'Vegan']).nullable().optional(),
+    dietaryTypes: z.array(z.enum(['Meat', 'Fish', 'Vegan'])).max(3).optional(),
   }),
 });
 
@@ -36,7 +36,7 @@ const updateMealValidation = z.object({
     calorieRange: z.enum([...CALORIE_RANGES] as [string, ...string[]]).optional(),
     portionType: z.enum(['Small', 'Medium', 'Large']).optional(),
     isQuickMeal: z.boolean().optional(),
-    dietaryType: z.enum(['Meat', 'Fish', 'Vegan']).nullable().optional(),
+    dietaryTypes: z.array(z.enum(['Meat', 'Fish', 'Vegan'])).max(3).optional(),
   }),
 });
 

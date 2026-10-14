@@ -28,7 +28,7 @@ interface Meal {
   portionType?: PortionType; image?: string; nutrition: NutritionInfo;
   description?: string;
   isQuickMeal?: boolean;
-  dietaryType?: DietaryType;
+  dietaryTypes?: DietaryType[];
   createdAt: string;
 }
 
@@ -78,13 +78,15 @@ export function autoDetectPortion(categoryLabel: string, calories: number): Port
 const EMPTY_FORM = {
   name: "", category: "Colazione",
   portionType: "Medium" as PortionType,
-  dietaryType: "" as "" | DietaryType,
+  dietaryTypes: [] as DietaryType[],
   calories: "", protein: "", carbohydrates: "", fat: "",
   description: "",
   isQuickMeal: false,
 };
 
 const PAGE_SIZE = 8;
+// Max tags per meal, where "Fast" (PASTO VELOCE) counts as one tag
+const MAX_TAGS_PER_MEAL = 2;
 
 export default function Butrition() {
   const [meals, setMeals]           = useState<Meal[]>([]);
@@ -137,7 +139,7 @@ export default function Butrition() {
       name: meal.name,
       category: BADGE_LABEL[meal.category] || "Colazione",
       portionType: meal.portionType ?? "Medium",
-      dietaryType: meal.dietaryType || "",
+      dietaryTypes: meal.dietaryTypes ?? [],
       calories: String(meal.nutrition.calories),
       protein: String(meal.nutrition.protein),
       carbohydrates: String(meal.nutrition.carbohydrates),
@@ -152,6 +154,28 @@ export default function Butrition() {
   }
 
   function closeModal() { setModalOpen(false); }
+
+  // ─── Tags: Meat / Fish / Vegan (Lunch & Dinner) + Fast, max two per meal ─────
+  const isDietaryCategory = form.category === "Pranzo" || form.category === "Cena";
+  const tagCount = form.dietaryTypes.length + (form.isQuickMeal ? 1 : 0);
+
+  function toggleDietary(type: DietaryType) {
+    setForm((f) => {
+      const has = f.dietaryTypes.includes(type);
+      if (!has && f.dietaryTypes.length + (f.isQuickMeal ? 1 : 0) >= MAX_TAGS_PER_MEAL) return f;
+      return {
+        ...f,
+        dietaryTypes: has ? f.dietaryTypes.filter((t) => t !== type) : [...f.dietaryTypes, type],
+      };
+    });
+  }
+
+  function toggleFast() {
+    setForm((f) => {
+      if (!f.isQuickMeal && f.dietaryTypes.length >= MAX_TAGS_PER_MEAL) return f;
+      return { ...f, isQuickMeal: !f.isQuickMeal };
+    });
+  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -178,9 +202,11 @@ export default function Butrition() {
     }
 
     const bodyCategory = CATEGORY_MAP[form.category] ?? "Breakfast";
-    const dietaryType = (bodyCategory === "Lunch" || bodyCategory === "Dinner") && form.dietaryType
-      ? form.dietaryType
-      : null;
+    const dietaryTypes = isDietaryCategory ? form.dietaryTypes : [];
+    if (dietaryTypes.length + (form.isQuickMeal ? 1 : 0) > MAX_TAGS_PER_MEAL) {
+      setFormError("Puoi selezionare al massimo due tag (carne, pesce, vegano, veloce).");
+      return;
+    }
 
     const fd = new FormData();
     if (imageFile) fd.append("image", imageFile);
@@ -188,7 +214,7 @@ export default function Butrition() {
       name: form.name.trim(),
       category: bodyCategory,
       portionType: form.portionType,
-      dietaryType: dietaryType,
+      dietaryTypes,
       description: form.description.trim() || undefined,
       isQuickMeal: form.isQuickMeal,
       nutrition: {
@@ -542,11 +568,11 @@ export default function Butrition() {
                           <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${BADGE[meal.category]}`}>
                             {BADGE_LABEL[meal.category]}
                           </span>
-                          {meal.dietaryType && (
-                            <span className="rounded-full px-2 py-0.5 text-[9px] font-medium bg-slate-100 text-slate-700">
-                              {meal.dietaryType === "Meat" ? "🥩 Carne" : meal.dietaryType === "Fish" ? "🐟 Pesce" : "🌱 Vegano"}
+                          {(meal.dietaryTypes ?? []).map((d) => (
+                            <span key={d} className="rounded-full px-2 py-0.5 text-[9px] font-medium bg-slate-100 text-slate-700">
+                              {d === "Meat" ? "🥩 Carne" : d === "Fish" ? "🐟 Pesce" : "🌱 Vegano"}
                             </span>
-                          )}
+                          ))}
                         </div>
                       </td>
                       <td className="px-4 py-3">{meal.nutrition.calories} kcal</td>
@@ -704,49 +730,61 @@ export default function Butrition() {
                 </div>
               </div>
 
-              {/* Dietary Type for Lunch / Dinner */}
-              {(form.category === "Pranzo" || form.category === "Cena") && (
-                <div>
-                  <label className="mb-2 block text-[12px] font-semibold text-slate-700">
-                    Tipo di alimento (Filtro Pranzo / Cena)
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
+              {/* Tags: Meat / Fish / Vegan (Lunch & Dinner only) + Fast. Max two per meal. */}
+              <div>
+                <label className="mb-2 block text-[12px] font-semibold text-slate-700">
+                  Tag del pasto (massimo {MAX_TAGS_PER_MEAL})
+                </label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {isDietaryCategory && (
+                    [
                       { type: "Meat" as const, label: "🥩 Carne" },
                       { type: "Fish" as const, label: "🐟 Pesce" },
                       { type: "Vegan" as const, label: "🌱 Vegano" },
-                    ].map((d) => (
+                    ].map((d) => {
+                      const active = form.dietaryTypes.includes(d.type);
+                      const disabled = !active && tagCount >= MAX_TAGS_PER_MEAL;
+                      return (
+                        <button
+                          key={d.type}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => toggleDietary(d.type)}
+                          className={`rounded-lg border px-3 py-2 text-[12px] font-semibold transition ${
+                            active
+                              ? "border-[#8F00FF] bg-[#8F00FF]/5 text-[#8F00FF]"
+                              : disabled
+                                ? "cursor-not-allowed border-slate-100 text-slate-300"
+                                : "border-slate-200 text-slate-600 hover:border-[#8F00FF]"
+                          }`}
+                        >
+                          {d.label}
+                        </button>
+                      );
+                    })
+                  )}
+                  {(() => {
+                    const active = form.isQuickMeal;
+                    const disabled = !active && tagCount >= MAX_TAGS_PER_MEAL;
+                    return (
                       <button
-                        key={d.type}
                         type="button"
-                        onClick={() =>
-                          setForm((f) => ({
-                            ...f,
-                            dietaryType: f.dietaryType === d.type ? "" : d.type,
-                          }))
-                        }
+                        disabled={disabled}
+                        onClick={toggleFast}
                         className={`rounded-lg border px-3 py-2 text-[12px] font-semibold transition ${
-                          form.dietaryType === d.type
+                          active
                             ? "border-[#8F00FF] bg-[#8F00FF]/5 text-[#8F00FF]"
-                            : "border-slate-200 text-slate-600 hover:border-[#8F00FF]"
+                            : disabled
+                              ? "cursor-not-allowed border-slate-100 text-slate-300"
+                              : "border-slate-200 text-slate-600 hover:border-[#8F00FF]"
                         }`}
                       >
-                        {d.label}
+                        ⚡ Pasto veloce
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })()}
                 </div>
-              )}
-
-              <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-[13px] font-semibold text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={form.isQuickMeal}
-                  onChange={(e) => setForm((f) => ({ ...f, isQuickMeal: e.target.checked }))}
-                  className="h-4 w-4 accent-[#8F00FF]"
-                />
-                PASTO VELOCE
-              </label>
+              </div>
 
               {/* Nutrition */}
               <div>

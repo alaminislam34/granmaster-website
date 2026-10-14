@@ -27,7 +27,7 @@ import {
 
 /** Fields to populate when returning a full meal plan */
 const MEAL_POPULATE_FIELDS =
-  'name category calories protein carbohydrates fat calorieRange image description isQuickMeal dietaryType portionType';
+  'name category calories protein carbohydrates fat calorieRange image description isQuickMeal dietaryTypes portionType';
 
 /**
  * Re-compute all daily totals and over-budget status, then persist.
@@ -528,12 +528,12 @@ const variante = async (payload: {
     calories: { $gte: minCal, $lte: maxCal },
   };
   if (dietaryType) {
-    query.dietaryType = dietaryType;
+    query.dietaryTypes = dietaryType; // array field: matches meals whose tags include it
   }
 
   let candidates = await MealModel.find(query)
     .select(
-      '_id name calories protein carbohydrates fat image description isQuickMeal dietaryType portionType'
+      '_id name calories protein carbohydrates fat image description isQuickMeal dietaryTypes portionType'
     )
     .sort({ name: 1, calories: 1, _id: 1 })
     .lean();
@@ -543,10 +543,10 @@ const variante = async (payload: {
     // Fallback: match category + dietaryType even if calories are slightly outside
     candidates = await MealModel.find({
       category: slot.category,
-      dietaryType,
+      dietaryTypes: dietaryType,
     })
       .select(
-        '_id name calories protein carbohydrates fat image description isQuickMeal dietaryType portionType'
+        '_id name calories protein carbohydrates fat image description isQuickMeal dietaryTypes portionType'
       )
       .sort({ name: 1, calories: 1, _id: 1 })
       .lean();
@@ -555,7 +555,7 @@ const variante = async (payload: {
   if (!candidates.length && !isCheatSwap) {
     candidates = await MealModel.find({ category: slot.category })
       .select(
-        '_id name calories protein carbohydrates fat image description isQuickMeal dietaryType portionType'
+        '_id name calories protein carbohydrates fat image description isQuickMeal dietaryTypes portionType'
       )
       .sort({ name: 1, calories: 1, _id: 1 })
       .lean();

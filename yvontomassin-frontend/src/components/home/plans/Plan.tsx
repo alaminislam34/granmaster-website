@@ -20,7 +20,8 @@ interface MealInSlot {
   _id: string; name: string; category: string;
   calories: number; protein: number; carbohydrates: number; fat: number;
   calorieRange: string; image?: string; description?: string;
-  dietaryType?: "Meat" | "Fish" | "Vegan";
+  dietaryTypes?: ("Meat" | "Fish" | "Vegan")[];
+  isQuickMeal?: boolean;
 }
 
 interface Slot {
@@ -409,11 +410,11 @@ function PlanContent() {
                           ? visibleMeal.name
                           : <span className="text-gray-400 italic text-sm">Nessun pasto disponibile</span>}
                       </h3>
-                      {visibleMeal?.dietaryType && (
-                        <span className="shrink-0 rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-[#8F00FF] border border-purple-100">
-                          {visibleMeal.dietaryType === "Meat" ? "🥩 Meat" : visibleMeal.dietaryType === "Fish" ? "🐟 Fish" : "🌱 Vegan"}
+                      {(visibleMeal?.dietaryTypes ?? []).map((d) => (
+                        <span key={d} className="shrink-0 rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-[#8F00FF] border border-purple-100">
+                          {d === "Meat" ? "🥩 Meat" : d === "Fish" ? "🐟 Fish" : "🌱 Vegan"}
                         </span>
-                      )}
+                      ))}
                     </div>
                     {visibleMeal?.description && (
                       <p className="mt-1 text-[12px] text-gray-500 leading-snug">{visibleMeal.description}</p>

@@ -15,7 +15,7 @@ export interface IMeal {
   image?: string;
   description?: string;
   isQuickMeal?: boolean;
-  dietaryType?: 'Meat' | 'Fish' | 'Vegan';
+  dietaryTypes?: ('Meat' | 'Fish' | 'Vegan')[];
 }
 
 // ─── One slot inside a daily plan ─────────────────────────────────────────────

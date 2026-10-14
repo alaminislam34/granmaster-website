@@ -9,7 +9,7 @@ const NutritionSchema = new Schema<INutrition>(
       enum: ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert', 'Drink'],
       required: true,
     },
-    portionSize: { type: Number, required: true }, // grams
+    portionSize: { type: Number }, // legacy, grams — optional
     portionType: {
       type: String,
       enum: ['Small', 'Medium', 'Large'],
@@ -18,6 +18,10 @@ const NutritionSchema = new Schema<INutrition>(
     image: { type: String, default: null },
     description: { type: String, default: null },
     isQuickMeal: { type: Boolean, default: false },
+    dietaryTypes: {
+      type: [{ type: String, enum: ['Meat', 'Fish', 'Vegan'] }],
+      default: [],
+    },
     nutrition: {
       calories: { type: Number, required: true },
       protein: { type: Number, required: true },

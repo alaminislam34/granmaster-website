@@ -1,4 +1,6 @@
-import { INutrition } from './nutrition.interface';
+import { StatusCodes } from 'http-status-codes';
+import AppError from '../../../errors/AppError';
+import { DietaryType, INutrition } from './nutrition.interface';
 import { NutritionModel } from './nutrition.model';
 import { MealModel } from '../mealplanner/meal.model';
 import { getCalorieRange } from '../mealplanner/mealplanner.constant';
@@ -6,6 +8,34 @@ import { s3Service } from '../../services/s3.service';
 
 // ─── Valid MealPlanner categories (Dessert/Drink not in MealPlanner) ──────────
 const MEAL_PLANNER_CATEGORIES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+
+// Meat / Fish / Vegan apply only to Lunch and Dinner
+const DIETARY_CATEGORIES = ['Lunch', 'Dinner'];
+// Max tags per meal, where "Fast" (isQuickMeal) counts as one tag
+const MAX_TAGS_PER_MEAL = 2;
+
+/**
+ * Normalises dietary tags and enforces the rules:
+ * - Meat/Fish/Vegan only for Lunch and Dinner (otherwise cleared)
+ * - At most two tags in total, counting "Fast" (isQuickMeal)
+ */
+const normalizeDietary = (
+  category: string,
+  dietaryTypes: DietaryType[] | undefined,
+  isQuickMeal: boolean
+): DietaryType[] => {
+  const allowed = DIETARY_CATEGORIES.includes(category)
+    ? [...new Set(dietaryTypes ?? [])]
+    : [];
+
+  if (allowed.length + (isQuickMeal ? 1 : 0) > MAX_TAGS_PER_MEAL) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      'Puoi selezionare al massimo due tag (carne, pesce, vegano, veloce).'
+    );
+  }
+  return allowed;
+};
 
 async function syncToMealPlanner(
   nutritionId: string,
@@ -33,6 +63,7 @@ async function syncToMealPlanner(
         : {}),
       description: data.description ?? null,
       isQuickMeal: data.isQuickMeal === true,
+      dietaryTypes: data.dietaryTypes ?? [],
     },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
@@ -45,6 +76,12 @@ const createNutrition = async (
 ) => {
   const payload: Partial<INutrition> = { ...data };
   delete payload.image;
+  payload.isQuickMeal = payload.isQuickMeal === true;
+  payload.dietaryTypes = normalizeDietary(
+    payload.category ?? '',
+    payload.dietaryTypes,
+    payload.isQuickMeal
+  );
 
   let uploadedImageUrl: string | null = null;
 
@@ -70,6 +107,7 @@ const createNutrition = async (
     image: result.image,
     description: result.description,
     isQuickMeal: result.isQuickMeal,
+    dietaryTypes: result.dietaryTypes,
   }).catch(() => {});
   return result;
 };
@@ -102,6 +140,13 @@ const updateNutrition = async (
   const safePayload: Partial<INutrition> = { ...payload };
   delete safePayload.image;
 
+  // Validate against the merged result, since a partial update may change only one of the fields
+  safePayload.dietaryTypes = normalizeDietary(
+    payload.category ?? existing.category,
+    payload.dietaryTypes ?? existing.dietaryTypes,
+    payload.isQuickMeal ?? existing.isQuickMeal === true
+  );
+
   let uploadedImageUrl: string | null = null;
 
   if (imageFile) {
@@ -130,6 +175,7 @@ const updateNutrition = async (
       image: result.image,
       description: result.description,
       isQuickMeal: result.isQuickMeal,
+      dietaryTypes: result.dietaryTypes,
     }).catch(() => {});
 
     if (uploadedImageUrl && existing.image && existing.image !== uploadedImageUrl) {
@@ -164,6 +210,7 @@ const syncAllNutritionToMealPlanner = async () => {
       image: n.image,
       description: n.description,
       isQuickMeal: n.isQuickMeal,
+      dietaryTypes: n.dietaryTypes,
     });
     synced++;
   }
